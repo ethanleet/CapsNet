@@ -1,0 +1,213 @@
+import torch.nn as nn
+import torch.nn.functional as functional
+from tools import squash
+import torch
+from torch.autograd import Variable
+USE_GPU=True
+
+
+# First Convolutional Layer
+class ConvLayer(nn.Module):
+  def __init__(self, 
+               in_channels=1, 
+               out_channels=256, 
+               kernel_size=9):
+    super(ConvLayer, self).__init__()
+    
+    self.conv = nn.Conv2d(in_channels=in_channels,
+                          out_channels=out_channels,
+                          kernel_size=kernel_size,
+                          stride=1)
+  def forward(self, x):
+    output = self.conv(x)
+    output = functional.relu(output)
+    return output
+
+class PrimaryCapules(nn.Module):
+  
+  def __init__(self, 
+               num_capsules=8, 
+               in_channels=256, 
+               out_channels=32, 
+               kernel_size=9):
+    super(PrimaryCapules, self).__init__()
+    self.capsules = nn.ModuleList([
+      nn.Conv2d(in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                stride=2,
+                padding=0) for i in range(num_capsules)
+    ])
+  
+  def forward(self, x):
+    output = [caps(x) for caps in self.capsules]
+    output = torch.stack(output, dim=1)
+    output = output.view(x.size(0), 32*6*6, -1)
+    
+    return squash(output)
+
+
+class ClassCapsules(nn.Module):
+  
+  def __init__(self, 
+               num_capsules=10,
+               num_routes = 32*6*6,
+               in_channels=8,
+               out_channels=16,
+               routing_iterations=3):
+    super(ClassCapsules, self).__init__()
+    
+    self.in_channels = in_channels
+    self.num_routes = num_routes
+    self.num_capsules = num_capsules
+    self.routing_iterations = routing_iterations
+    self.W = nn.Parameter(torch.normal(mean = torch.zeros(1,
+                                                          num_routes,
+                                                          num_capsules,
+                                                          out_channels,
+                                                          in_channels), std=0.05))
+  
+  def forward(self, x):
+    batch_size = x.size(0)
+    x = torch.stack([x] * self.num_capsules, dim=2).unsqueeze(4)
+    
+    W = torch.cat([self.W] * batch_size, dim=0)
+    u_hat = torch.matmul(W, x)
+    
+    b_ij = Variable(torch.zeros(1, self.num_routes, self.num_capsules, 1))
+    
+    if USE_GPU:
+      b_ij = b_ij.cuda()
+    
+    for it in range(self.routing_iterations):
+      c_ij = functional.softmax(b_ij, dim=1) # Not sure if it should be dim=1
+      c_ij = torch.cat([c_ij] * batch_size, dim=0).unsqueeze(4)
+      
+      s_j = (c_ij * u_hat).sum(dim=1, keepdim=True)
+      v_j = squash(s_j)
+      
+      if it < self.routing_iterations - 1: 
+        uhatv_product = torch.matmul(u_hat.transpose(3,4),
+                            torch.cat([v_j] * self.num_routes, dim=1))
+        uhatv_product = uhatv_product.squeeze(4).mean(dim=0, keepdim=True)
+        b_ij = b_ij + uhatv_product
+      
+    return v_j.squeeze(1)
+
+class ReconstructionModule(nn.Module):
+  def __init__(self, capsule_size=16, num_capsules=10):
+    super(ReconstructionModule, self).__init__()
+    
+    self.num_capsules = num_capsules
+    self.capsule_size = capsule_size
+    
+    self.decoder = nn.Sequential(
+      nn.Linear(capsule_size*num_capsules, 512),
+      nn.ReLU(),
+      nn.Linear(512, 1024),
+      nn.ReLU(),
+      nn.Linear(1024, 784),
+      nn.Sigmoid()
+    )
+  
+  def forward(self, x, data, target=None):
+    batch_size = x.size(0)
+    if target is None:
+      classes = torch.sqrt((x **2).sum(2))
+      classes = functional.softmax(classes, dim=1)
+
+      _, max_length_indices = classes.max(dim=1)
+    else:
+      max_length_indices = target.max(dim=1)[1].reshape(-1,1)
+    masked = Variable(torch.eye(self.num_capsules))
+    
+    if USE_GPU:
+      masked  = masked.cuda()
+    masked = masked.index_select(dim=0, index=max_length_indices.squeeze(1).data)
+    decoder_input = (x * masked[:, :, None, None]).view(batch_size, -1)
+
+    reconstructions = self.decoder(decoder_input)
+    reconstructions = reconstructions.view(-1, 1, 28, 28)
+    
+    return reconstructions, masked
+
+class ConvReconstructionModule(nn.Module):
+  def __init__(self, num_capsules=10, capsule_size=16):
+    
+    super(ReconstructionModule, self).__init__()
+    self.num_capsules = num_capsules
+    self.capsule_size = capsule_size
+    self.decoder = nn.Sequential(
+      nn.ConvTranspose2d(in_channels=10, out_channels=32, kernel_size=4, stride=2),
+      nn.ConvTranspose2d(in_channels=32, out_channels=64, kernel_size=5, stride=1),
+      nn.ConvTranspose2d(in_channels=64, out_channels=1, kernel_size=2, stride=2)
+    )
+    
+  def forward(self, x, data, target=None):
+    batch_size = x.size(0)
+    if target is None:
+      classes = torch.sqrt((x **2).sum(2))
+      classes = functional.softmax(classes, dim=1)
+
+      _, max_length_indices = classes.max(dim=1)
+    else:
+      max_length_indices = target.max(dim=1)[1].reshape(-1,1)
+    masked = Variable(torch.eye(self.num_capsules))
+    
+    if USE_GPU:
+      masked  = masked.cuda()
+    masked = masked.index_select(dim=0, index=max_length_indices.squeeze(1).data)
+    decoder_input = (x * masked[:, :, None, None])
+    decoder_input = decoder_input.view(batch_size,10, 4, 4)
+    reconstructions = self.decoder(decoder_input)
+    reconstructions = reconstructions.view(-1, 1, 28, 28)
+    
+    return reconstructions, masked
+
+
+
+
+class CapsNet(nn.Module):
+  
+  def __init__(self,
+               alpha=0.0005 # Alpha from the loss function 
+              ):
+    super(CapsNet, self).__init__()
+    
+    self.conv_layer = ConvLayer()
+    self.primary_capsules = PrimaryCapules()
+    self.digit_caps = ClassCapsules()
+    self.decoder = ReconstructionModule()
+    
+    self.mse_loss = nn.MSELoss()
+    self.alpha = alpha
+  
+  def forward(self, x, target=None):
+    output = self.conv_layer(x)
+    output = self.primary_capsules(output)
+    output = self.digit_caps(output)
+    reconstruction, masked = self.decoder(output, x, target)
+    return output, reconstruction, masked
+  
+  def loss(self, images,labels, capsule_output,  reconstruction):
+    marg_loss = self.margin_loss(capsule_output, labels)
+    rec_loss = self.reconstruction_loss(images, reconstruction)
+    return marg_loss + self.alpha*rec_loss
+  
+  def margin_loss(self, x, labels):
+    batch_size = x.size(0)
+    
+    v_c = torch.sqrt((x**2).sum(dim=2, keepdim=True))
+    
+    left = functional.relu(0.9 - v_c).view(batch_size, -1)
+    right = functional.relu(v_c - 0.1).view(batch_size, -1)
+    
+    loss = labels * left + 0.5 *(1-labels)*right
+    loss = loss.sum(dim=1).mean()
+    return loss
+  
+  def reconstruction_loss(self, data, reconstructions):
+    batch_size = reconstructions.size(0)
+    loss = self.mse_loss(reconstructions.view(batch_size, -1),
+                         data.view(batch_size, -1))
+    return loss
