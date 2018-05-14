@@ -1,3 +1,5 @@
+from torchvision import datasets, transforms
+import torch
 def load_mnist(batch_size):
   dataset_transform = transforms.Compose([
                transforms.ToTensor(),

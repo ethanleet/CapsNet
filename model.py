@@ -4,8 +4,6 @@ from tools import squash
 import torch
 from torch.autograd import Variable
 USE_GPU=True
-
-
 # First Convolutional Layer
 class ConvLayer(nn.Module):
   def __init__(self, 
@@ -14,13 +12,16 @@ class ConvLayer(nn.Module):
                kernel_size=9):
     super(ConvLayer, self).__init__()
     
-    self.conv = nn.Conv2d(in_channels=in_channels,
+    self.conv = nn.Sequential(
+        nn.Conv2d(in_channels=in_channels,
                           out_channels=out_channels,
                           kernel_size=kernel_size,
-                          stride=1)
+                          stride=1),
+        nn.BatchNorm2d(num_features=out_channels),
+        nn.ReLU()
+    )
   def forward(self, x):
     output = self.conv(x)
-    output = functional.relu(output)
     return output
 
 class PrimaryCapules(nn.Module):
@@ -36,7 +37,8 @@ class PrimaryCapules(nn.Module):
                 out_channels=out_channels,
                 kernel_size=kernel_size,
                 stride=2,
-                padding=0) for i in range(num_capsules)
+                padding=0)
+       for i in range(num_capsules)
     ])
   
   def forward(self, x):
@@ -134,13 +136,16 @@ class ReconstructionModule(nn.Module):
 class ConvReconstructionModule(nn.Module):
   def __init__(self, num_capsules=10, capsule_size=16):
     
-    super(ReconstructionModule, self).__init__()
+    super(ConvReconstructionModule, self).__init__()
     self.num_capsules = num_capsules
     self.capsule_size = capsule_size
     self.decoder = nn.Sequential(
       nn.ConvTranspose2d(in_channels=10, out_channels=32, kernel_size=4, stride=2),
+      nn.ReLU(),
       nn.ConvTranspose2d(in_channels=32, out_channels=64, kernel_size=5, stride=1),
-      nn.ConvTranspose2d(in_channels=64, out_channels=1, kernel_size=2, stride=2)
+      nn.ReLU(),
+      nn.ConvTranspose2d(in_channels=64, out_channels=1, kernel_size=2, stride=2),
+      nn.Sigmoid()
     )
     
   def forward(self, x, data, target=None):
@@ -170,14 +175,18 @@ class ConvReconstructionModule(nn.Module):
 class CapsNet(nn.Module):
   
   def __init__(self,
-               alpha=0.0005 # Alpha from the loss function 
+               alpha=0.0005, # Alpha from the loss function
+               reconstruction_type = "FC"
               ):
     super(CapsNet, self).__init__()
     
     self.conv_layer = ConvLayer()
     self.primary_capsules = PrimaryCapules()
     self.digit_caps = ClassCapsules()
-    self.decoder = ReconstructionModule()
+    if reconstruction_type == "FC":
+        self.decoder = ReconstructionModule()
+    else:
+        self.decoder = ConvReconstructionModule()
     
     self.mse_loss = nn.MSELoss()
     self.alpha = alpha
