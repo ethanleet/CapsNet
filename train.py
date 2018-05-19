@@ -34,7 +34,7 @@ def main():
 		print("Saved model not found; Model initialized.")
 		initialize_weights(capsnet)
 
-	train_loader, test_loader = load_mnist(batch_size)
+	train_loader, test_loader = load_mnist(BATCH_SIZE)
 	stats = Statistics()
 	
 	for epoch in range(MAX_EPOCHS):
