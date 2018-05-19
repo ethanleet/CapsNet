@@ -13,6 +13,11 @@ from stats import *
 from tools import *
 from model import CapsNet
 
+def initialize_weights(capsnet):
+	capsnet.conv_layer.conv.apply(weights_init_xavier)
+	capsnet.primary_capsules.apply(weights_init_xavier)
+	capsnet.decoder.apply(weights_init_xavier)
+	#nn.init.xavier_normal_(capsnet.digit_caps.W)
 
 def main():
 	capsnet = CapsNet(reconstruction_type="FC")
