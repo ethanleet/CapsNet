@@ -19,3 +19,10 @@ def weights_init_xavier(m):
     elif classname.find('BatchNorm2d') != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0.0)
+        
+        
+def initialize_weights(capsnet):
+	capsnet.conv_layer.conv.apply(weights_init_xavier)
+	capsnet.primary_capsules.apply(weights_init_xavier)
+	capsnet.decoder.apply(weights_init_xavier)
+	#nn.init.xavier_normal_(capsnet.digit_caps.W)

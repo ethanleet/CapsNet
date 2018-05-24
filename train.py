@@ -12,69 +12,70 @@ from data_loaders import *
 from stats import *
 from tools import *
 from model import CapsNet
+from options import create_options
+from tqdm import tqdm
 
-def initialize_weights(capsnet):
-	capsnet.conv_layer.conv.apply(weights_init_xavier)
-	capsnet.primary_capsules.apply(weights_init_xavier)
-	capsnet.decoder.apply(weights_init_xavier)
-	#nn.init.xavier_normal_(capsnet.digit_caps.W)
+def onehot(tensor):
+    return torch.eye(10).cuda().index_select(dim=0, index=tensor) # One-hot encode 
 
-def main():
-	capsnet = CapsNet(reconstruction_type="FC")
-	if USE_GPU:
-		capsnet.cuda()
-	optimizer = torch.optim.Adam(capsnet.parameters())
-	
-	# Load saved model
-	model_path = path.join(SAVE_DIR, SAVED_MODEL)
-	if path.isfile(model_path):
-		print("Saved model found")
-		capsnet.load_state_dict(torch.load(model_path))
-	else:
-		print("Saved model not found; Model initialized.")
-		initialize_weights(capsnet)
+def transform_data(data,target,use_gpu):
+    data, target = Variable(data), Variable(target)
+    if use_gpu:
+        data, target = data.cuda(), target.cuda()
+    target = onehot(target)
+    return data, target
 
-	train_loader, test_loader = load_mnist(BATCH_SIZE)
-	stats = Statistics()
-	
-	for epoch in range(MAX_EPOCHS):
-		capsnet.train()
-		for batch, (data, target) in list(enumerate(train_loader)):
-			target = torch.eye(10).index_select(dim=0, index=target)
-			data, target = Variable(data), Variable(target)
-			if USE_GPU:
-				data, target = data.cuda(), target.cuda()
-			
-			optimizer.zero_grad()
-			
-			output, reconstructions, masked = capsnet(data, target)
-			loss = capsnet.loss(data, target, output, reconstructions)
-			
-			loss.backward()
-			optimizer.step()
-			
-			stats.track_train(loss.data.item())
-			
-			if batch % DISPLAY_STEP == 0 and batch != 0:
-				capsnet.eval()
+def main(opts):
+    capsnet = CapsNet(reconstruction_type=opts.decoder)
+    if opts.use_gpu:
+        capsnet.cuda()
+    optimizer = torch.optim.Adam(capsnet.parameters(), lr=opts.learning_rate)
 
-				for batch_id, (data, target) in enumerate(test_loader):
-					target = torch.eye(10).index_select(dim=0, index=target)
-					data, target = Variable(data), Variable(target)
-					if USE_GPU:
-						data,target = data.cuda(), target.cuda()
+    """ Load saved model"""
+    model_path = path.join(SAVE_DIR, opts.filepath)
+    if path.isfile(model_path) and opts.load_saved:
+        print("Saved model found")
+        capsnet.load_state_dict(torch.load(model_path))
+    else:
+        print("Saved model not found; Model initialized.")
+        initialize_weights(capsnet)
 
-					output, reconstructions, masked = capsnet(data)
-					loss = capsnet.loss(data, target, output, reconstructions)
-					
-					stats.track_test(loss.data.item(), target, masked)
-					
-				stats.save_stats(epoch)
-				
-				# Save model
-				model_path = path.join(SAVE_DIR, "model{}.pt".format(epoch))
-				torch.save(capsnet.state_dict(), model_path)
-				capsnet.train()
+    train_loader, test_loader = load_mnist(opts.batch_size)
+    stats = Statistics(LOG_DIR)
+
+    for epoch in range(opts.epochs):
+        capsnet.train()
+        for batch, (data, target) in tqdm(list(enumerate(train_loader)), ascii=True, desc="Epoch:{:3d}, ".format(epoch)):
+            optimizer.zero_grad()
+            data, target = transform_data(data, target, opts.use_gpu)
+            
+            capsule_output, reconstructions, _ = capsnet(data, target)
+            loss, rec_loss = capsnet.loss(data, target, capsule_output, reconstructions)
+            loss.backward()
+            optimizer.step()
+            
+            stats.track_train(loss.data.item(), rec_loss.data.item())
+            """Evaluate on test set"""
+            if batch % opts.display_step == 0:
+                capsnet.eval()
+
+                for batch_id, (data, target) in enumerate(test_loader):
+                    data, target = transform_data(data, target, opts.use_gpu)
+                    
+                    capsule_output, reconstructions, predictions = capsnet(data)
+    
+                    loss, rec_loss = capsnet.loss(data, target, capsule_output, reconstructions)
+
+
+                    stats.track_test(loss.data.item(),rec_loss.data.item(), target, predictions)
+
+                stats.save_stats(epoch)
+
+                # Save model
+                model_path = path.join(SAVE_DIR, "model{}.pt".format(epoch))
+                torch.save(capsnet.state_dict(), model_path)
+                capsnet.train()
 
 if __name__ == '__main__':
-	main()
+    opts = create_options()
+    main(opts)

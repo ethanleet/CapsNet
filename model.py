@@ -105,8 +105,10 @@ class ReconstructionModule(nn.Module):
     
     self.decoder = nn.Sequential(
       nn.Linear(capsule_size*num_capsules, 512),
+      nn.BatchNorm1d(512),
       nn.ReLU(),
       nn.Linear(512, 1024),
+      nn.BatchNorm1d(1024),        
       nn.ReLU(),
       nn.Linear(1024, 784),
       nn.Sigmoid()
@@ -139,12 +141,18 @@ class ConvReconstructionModule(nn.Module):
     super(ConvReconstructionModule, self).__init__()
     self.num_capsules = num_capsules
     self.capsule_size = capsule_size
+    self.FC = nn.Sequential(
+        nn.Linear(capsule_size * num_capsules, num_capsules * 6 * 6 ),
+        nn.ReLU()
+    )
     self.decoder = nn.Sequential(
-      nn.ConvTranspose2d(in_channels=10, out_channels=32, kernel_size=4, stride=2),
+      nn.ConvTranspose2d(in_channels=10, out_channels=32, kernel_size=9, stride=2),
+      nn.BatchNorm2d(num_features=32),
       nn.ReLU(),
-      nn.ConvTranspose2d(in_channels=32, out_channels=64, kernel_size=5, stride=1),
+      nn.ConvTranspose2d(in_channels=32, out_channels=64, kernel_size=9, stride=1),  
+      nn.BatchNorm2d(num_features=64),
       nn.ReLU(),
-      nn.ConvTranspose2d(in_channels=64, out_channels=1, kernel_size=2, stride=2),
+      nn.ConvTranspose2d(in_channels=64, out_channels=1, kernel_size=2, stride=1),
       nn.Sigmoid()
     )
     
@@ -162,8 +170,9 @@ class ConvReconstructionModule(nn.Module):
     if USE_GPU:
       masked  = masked.cuda()
     masked = masked.index_select(dim=0, index=max_length_indices.squeeze(1).data)
-    decoder_input = (x * masked[:, :, None, None])
-    decoder_input = decoder_input.view(batch_size,10, 4, 4)
+    decoder_input = (x * masked[:, :, None, None]).view(batch_size, -1)
+    decoder_input = self.FC(decoder_input)
+    decoder_input = decoder_input.view(batch_size,10, 6, 6)
     reconstructions = self.decoder(decoder_input)
     reconstructions = reconstructions.view(-1, 1, 28, 28)
     
@@ -201,7 +210,7 @@ class CapsNet(nn.Module):
   def loss(self, images,labels, capsule_output,  reconstruction):
     marg_loss = self.margin_loss(capsule_output, labels)
     rec_loss = self.reconstruction_loss(images, reconstruction)
-    return marg_loss + self.alpha*rec_loss
+    return marg_loss + self.alpha*rec_loss, rec_loss
   
   def margin_loss(self, x, labels):
     batch_size = x.size(0)
