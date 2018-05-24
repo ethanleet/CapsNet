@@ -20,7 +20,8 @@ class Statistics:
         os.makedirs(LOG_DIR)
     
     f = open(self.log_file, 'w')
-    f.write("epoch, time, test_loss, train_loss, test_accuracy, reconstruction_loss_train, reconstruction_loss_test \n")
+
+    f.write("epoch, time, test_loss, train_loss, test_accuracy, reconstruction_loss_train, reconstruction_loss_test\n")
     f.close()
   
   def reset_tracking_stats(self):
