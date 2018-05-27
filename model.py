@@ -17,7 +17,6 @@ class ConvLayer(nn.Module):
                           out_channels=out_channels,
                           kernel_size=kernel_size,
                           stride=1),
-        nn.BatchNorm2d(num_features=out_channels),
         nn.ReLU()
     )
   def forward(self, x):
@@ -105,10 +104,8 @@ class ReconstructionModule(nn.Module):
     
     self.decoder = nn.Sequential(
       nn.Linear(capsule_size*num_capsules, 512),
-      nn.BatchNorm1d(512),
       nn.ReLU(),
-      nn.Linear(512, 1024),
-      nn.BatchNorm1d(1024),        
+      nn.Linear(512, 1024),        
       nn.ReLU(),
       nn.Linear(1024, 784),
       nn.Sigmoid()
@@ -217,8 +214,8 @@ class CapsNet(nn.Module):
     
     v_c = torch.sqrt((x**2).sum(dim=2, keepdim=True))
     
-    left = functional.relu(0.9 - v_c).view(batch_size, -1)
-    right = functional.relu(v_c - 0.1).view(batch_size, -1)
+    left = functional.relu(0.9 - v_c).view(batch_size, -1) ** 2
+    right = functional.relu(v_c - 0.1).view(batch_size, -1) ** 2
     
     loss = labels * left + 0.5 *(1-labels)*right
     loss = loss.sum(dim=1).mean()
