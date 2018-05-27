@@ -194,7 +194,7 @@ class CapsNet(nn.Module):
     else:
         self.decoder = ConvReconstructionModule()
     
-    self.mse_loss = nn.MSELoss()
+    self.mse_loss = nn.MSELoss(size_average=False)
     self.alpha = alpha
   
   def forward(self, x, target=None):
@@ -207,7 +207,8 @@ class CapsNet(nn.Module):
   def loss(self, images,labels, capsule_output,  reconstruction):
     marg_loss = self.margin_loss(capsule_output, labels)
     rec_loss = self.reconstruction_loss(images, reconstruction)
-    return marg_loss + self.alpha*rec_loss, rec_loss
+    total_loss = (marg_loss + self.alpha*rec_loss).mean()
+    return total_loss, rec_loss.mean()
   
   def margin_loss(self, x, labels):
     batch_size = x.size(0)
@@ -218,7 +219,7 @@ class CapsNet(nn.Module):
     right = functional.relu(v_c - 0.1).view(batch_size, -1) ** 2
     
     loss = labels * left + 0.5 *(1-labels)*right
-    loss = loss.sum(dim=1).mean()
+    loss = loss.sum(dim=1)
     return loss
   
   def reconstruction_loss(self, data, reconstructions):
