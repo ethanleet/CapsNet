@@ -1,3 +1,6 @@
 saved_models
 .DS_Store
 logs
+reconstructions
+__pycache__
+.ipynb_checkpoints

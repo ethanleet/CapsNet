@@ -4,5 +4,5 @@ SAVE_DIR = "saved_models"
 PLOT_DIR = "plots"
 # Directory to save logs
 LOG_DIR = "logs"
-
-
+# Directory to save images
+IMAGES_SAVE_DIR = "reconstructions"

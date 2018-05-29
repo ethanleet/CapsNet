@@ -25,8 +25,9 @@ def transform_data(data,target,use_gpu):
     target = onehot(target)
     return data, target
 
+
 def main(opts):
-    capsnet = CapsNet(reconstruction_type=opts.decoder)
+    capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha)
     if opts.use_gpu:
         capsnet.cuda()
     optimizer = torch.optim.Adam(capsnet.parameters(), lr=opts.learning_rate)
@@ -50,6 +51,7 @@ def main(opts):
             data, target = transform_data(data, target, opts.use_gpu)
             
             capsule_output, reconstructions, _ = capsnet(data, target)
+            data = denormalize(data)
             loss, rec_loss = capsnet.loss(data, target, capsule_output, reconstructions)
             loss.backward()
             optimizer.step()
@@ -63,16 +65,24 @@ def main(opts):
                     data, target = transform_data(data, target, opts.use_gpu)
                     
                     capsule_output, reconstructions, predictions = capsnet(data)
-    
+                    data = denormalize(data)
                     loss, rec_loss = capsnet.loss(data, target, capsule_output, reconstructions)
 
 
                     stats.track_test(loss.data.item(),rec_loss.data.item(), target, predictions)
 
                 stats.save_stats(epoch)
-
+                
+                # Save reconstruction image from testing set
+                if opts.save_images:
+                    data, target = iter(test_loader).next()
+                    data, _ = transform_data(data, target, opts.use_gpu)
+                    _, reconstructions, _ = capsnet(data)
+                    filename = "reconstruction_epoch_{}.png".format(epoch)
+                    save_images(IMAGES_SAVE_DIR, filename, data, reconstructions)
+                
                 # Save model
-                model_path = path.join(SAVE_DIR, "model{}.pt".format(epoch))
+                model_path = get_path(SAVE_DIR, "model{}.pt".format(epoch))
                 torch.save(capsnet.state_dict(), model_path)
                 capsnet.train()
 
