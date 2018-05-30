@@ -1,0 +1,2 @@
+epoch, time, test_loss, train_loss, test_accuracy, reconstruction_loss_train, reconstruction_loss_test
+0, 9.12298321723938, 0.635052316550967, 0.6291435956954956, 10.32, 181.12762451171875, 179.76569994190072

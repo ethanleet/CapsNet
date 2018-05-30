@@ -16,7 +16,7 @@ def create_options():
     parser.add_option("-d","--decoder", dest="decoder", default="FC",
                       help="Decoder structure 'FC' or 'Conv'")
     parser.add_option("-b", "--batch_size", dest="batch_size", default=128, type="int")
-    parser.add_option("-e", "--epochs", dest="epochs", default=50, type="int",
+    parser.add_option("-e", "--epochs", dest="epochs", default=100, type="int",
                       help="Number of epochs to train for")
     parser.add_option("-s", "--saved", dest="load_saved", default=False, action="store_true")
     parser.add_option("-f", "--file", dest="filepath", default="modelk.pt",
@@ -27,7 +27,7 @@ def create_options():
                       help="Interval between two stats saved")
     parser.add_option("--save_images", dest="save_images", default=True, action="store_false",
                       help="Set if you want to save reconstruction results each epoch")
-    parser.add_option("-a", "--alpha", dest="alpha", default=0.0005, type="float",
+    parser.add_option("-a", "--alpha", dest="alpha", default=0.001, type="float",
                       help="Alpha constant from paper (Amount of reconstruction loss)")
     
     options, args = parser.parse_args()

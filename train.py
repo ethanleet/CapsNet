@@ -45,6 +45,8 @@ def main(opts):
     stats = Statistics(LOG_DIR)
 
     for epoch in range(opts.epochs):
+        train = True
+        test = False
         capsnet.train()
         for batch, (data, target) in tqdm(list(enumerate(train_loader)), ascii=True, desc="Epoch:{:3d}, ".format(epoch)):
             optimizer.zero_grad()
@@ -52,10 +54,10 @@ def main(opts):
             
             capsule_output, reconstructions, _ = capsnet(data, target)
             data = denormalize(data)
-            loss, rec_loss = capsnet.loss(data, target, capsule_output, reconstructions)
+            loss, rec_loss = capsnet.loss(data, target, capsule_output, reconstructions,epoch,train)
             loss.backward()
             optimizer.step()
-            
+            train = False
             stats.track_train(loss.data.item(), rec_loss.data.item())
             """Evaluate on test set"""
             if batch % opts.display_step == 0:
@@ -66,7 +68,7 @@ def main(opts):
                     
                     capsule_output, reconstructions, predictions = capsnet(data)
                     data = denormalize(data)
-                    loss, rec_loss = capsnet.loss(data, target, capsule_output, reconstructions)
+                    loss, rec_loss = capsnet.loss(data, target, capsule_output, reconstructions,epoch,test)
 
 
                     stats.track_test(loss.data.item(),rec_loss.data.item(), target, predictions)
