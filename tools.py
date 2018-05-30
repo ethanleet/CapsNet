@@ -47,9 +47,10 @@ def save_images(SAVE_DIR, filename, images, reconstructions, num_images = 100):
         print("Not enough images to save.")
         return
 
-    big_image = np.ones((28*10, 28*20+1))
-    images = denormalize(images).view(-1, 28, 28)
-    reconstructions = denormalize(reconstructions).view(-1, 28, 28)
+    big_image = np.ones((3,32*10, 32*20+1))
+    #print('Images : ',big_image.T.shape,',',reconstructions.size())
+    images = denormalize(images).view(-1, 3 ,32, 32)
+    reconstructions = denormalize(reconstructions).view(-1, 3 ,32, 32)
     images = images.data.cpu().numpy()
     reconstructions = reconstructions.data.cpu().numpy()
     for i in range(num_images):
@@ -57,9 +58,9 @@ def save_images(SAVE_DIR, filename, images, reconstructions, num_images = 100):
         rec = reconstructions[i]
         j = i % 10
         i = i // 10
-        big_image[i*28:(i+1)*28, j*28:(j+1)*28] = image
+        big_image[:,i*32:(i+1)*32, j*32:(j+1)*32] = image
         j += 10
-        big_image[i*28:(i+1)*28, j*28+1:(j+1)*28+1] = rec
+        big_image[:,i*32:(i+1)*32, j*32+1:(j+1)*32+1] = rec
 
     path = get_path(SAVE_DIR, filename)
-    plt.imsave(path, big_image, cmap="gray")
+    plt.imsave(path, big_image.T)
