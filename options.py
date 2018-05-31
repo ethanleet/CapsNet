@@ -29,6 +29,7 @@ def create_options():
                       help="Set if you want to save reconstruction results each epoch")
     parser.add_option("-a", "--alpha", dest="alpha", default=0.0005, type="float",
                       help="Alpha constant from paper (Amount of reconstruction loss)")
+    parser.add_option("--dataset", dest="dataset", default="mnist", help="Set wanted dataset. Options: [mnist, small_norb]")
     
     options, args = parser.parse_args()
     print_options(options)
