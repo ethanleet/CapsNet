@@ -17,7 +17,7 @@ class ConvLayer(nn.Module):
                           out_channels=out_channels,
                           kernel_size=kernel_size,
                           stride=1),
-        nn.BatchNorm2d(num_features=out_channels),
+        nn.BatchNorm2d(out_channels),
         nn.ReLU()
     )
   def forward(self, x):
@@ -33,11 +33,14 @@ class PrimaryCapules(nn.Module):
                kernel_size=9):
     super(PrimaryCapules, self).__init__()
     self.capsules = nn.ModuleList([
+      nn.Sequential(
       nn.Conv2d(in_channels=in_channels,
                 out_channels=out_channels,
                 kernel_size=kernel_size,
                 stride=2,
-                padding=0)
+                padding=0),
+          
+      )
        for i in range(num_capsules)
     ])
   
@@ -68,6 +71,8 @@ class ClassCapsules(nn.Module):
                                                           num_capsules,
                                                           out_channels,
                                                           in_channels), std=0.05))
+    self.bias = nn.Parameter(torch.normal(mean = torch.zeros(1,1, num_capsules, out_channels,1), std=0.05))
+                                                             
   
   def forward(self, x):
     batch_size = x.size(0)
@@ -85,8 +90,9 @@ class ClassCapsules(nn.Module):
       c_ij = functional.softmax(b_ij, dim=1) # Not sure if it should be dim=1
       c_ij = torch.cat([c_ij] * batch_size, dim=0).unsqueeze(4)
       
-      s_j = (c_ij * u_hat).sum(dim=1, keepdim=True)
-      v_j = squash(s_j)
+      s_j = (c_ij * u_hat).sum(dim=1, keepdim=True) 
+      #shape: [batch_size, 1, num_capsules, out_channels, 1]
+      v_j = squash(s_j) + self.bias
       
       if it < self.routing_iterations - 1: 
         uhatv_product = torch.matmul(u_hat.transpose(3,4),
@@ -106,7 +112,7 @@ class ReconstructionModule(nn.Module):
     self.decoder = nn.Sequential(
       nn.Linear(capsule_size*num_capsules, 512),
       nn.ReLU(),
-      nn.Linear(512, 1024),
+      nn.Linear(512, 1024),        
       nn.ReLU(),
       nn.Linear(1024, 784),
       nn.Sigmoid()
@@ -140,12 +146,20 @@ class ConvReconstructionModule(nn.Module):
     super(ConvReconstructionModule, self).__init__()
     self.num_capsules = num_capsules
     self.capsule_size = capsule_size
+    self.FC = nn.Sequential(
+        nn.Linear(capsule_size * num_capsules, num_capsules * 6 * 6 ),
+        nn.ReLU()
+    )
     self.decoder = nn.Sequential(
-      nn.ConvTranspose2d(in_channels=10, out_channels=32, kernel_size=4, stride=2),
+      nn.ConvTranspose2d(in_channels=10, out_channels=32, kernel_size=9, stride=2),
+      nn.BatchNorm2d(32),
       nn.ReLU(),
-      nn.ConvTranspose2d(in_channels=32, out_channels=64, kernel_size=5, stride=1),
+        
+      
+      nn.ConvTranspose2d(in_channels=32, out_channels=64, kernel_size=9, stride=1),  
+      nn.BatchNorm2d(64), 
       nn.ReLU(),
-      nn.ConvTranspose2d(in_channels=64, out_channels=1, kernel_size=2, stride=2),
+      nn.ConvTranspose2d(in_channels=64, out_channels=1, kernel_size=2, stride=1),
       nn.Sigmoid()
     )
     
@@ -163,8 +177,9 @@ class ConvReconstructionModule(nn.Module):
     if USE_GPU:
       masked  = masked.cuda()
     masked = masked.index_select(dim=0, index=max_length_indices.squeeze(1).data)
-    decoder_input = (x * masked[:, :, None, None])
-    decoder_input = decoder_input.view(batch_size,10, 4, 4)
+    decoder_input = (x * masked[:, :, None, None]).view(batch_size, -1)
+    decoder_input = self.FC(decoder_input)
+    decoder_input = decoder_input.view(batch_size,10, 6, 6)
     reconstructions = self.decoder(decoder_input)
     reconstructions = reconstructions.view(-1, 1, 28, 28)
     
@@ -189,7 +204,7 @@ class CapsNet(nn.Module):
     else:
         self.decoder = ConvReconstructionModule()
     
-    self.mse_loss = nn.MSELoss()
+    self.mse_loss = nn.MSELoss(reduce=False)
     self.alpha = alpha
   
   def forward(self, x, target=None):
@@ -202,22 +217,24 @@ class CapsNet(nn.Module):
   def loss(self, images,labels, capsule_output,  reconstruction):
     marg_loss = self.margin_loss(capsule_output, labels)
     rec_loss = self.reconstruction_loss(images, reconstruction)
-    return marg_loss + self.alpha*rec_loss
+    total_loss = (marg_loss + self.alpha*rec_loss).mean()
+    return total_loss, rec_loss.mean()
   
   def margin_loss(self, x, labels):
     batch_size = x.size(0)
     
     v_c = torch.sqrt((x**2).sum(dim=2, keepdim=True))
     
-    left = functional.relu(0.9 - v_c).view(batch_size, -1)
-    right = functional.relu(v_c - 0.1).view(batch_size, -1)
+    left = functional.relu(0.9 - v_c).view(batch_size, -1) ** 2
+    right = functional.relu(v_c - 0.1).view(batch_size, -1) ** 2
     
     loss = labels * left + 0.5 *(1-labels)*right
-    loss = loss.sum(dim=1).mean()
+    loss = loss.sum(dim=1)
     return loss
   
   def reconstruction_loss(self, data, reconstructions):
     batch_size = reconstructions.size(0)
     loss = self.mse_loss(reconstructions.view(batch_size, -1),
                          data.view(batch_size, -1))
+    loss = loss.sum(dim=1)
     return loss
