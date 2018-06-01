@@ -5,8 +5,8 @@ import os
 import matplotlib.pyplot as plt 
 # The squash function specified in Dynamic Routing Between Capsules
 # x: input tensor 
-def squash(x):
-  norm_squared = (x ** 2).sum(-1, keepdim=True)
+def squash(x, dim=-1):
+  norm_squared = (x ** 2).sum(dim, keepdim=True)
   part1 = norm_squared / (1 +  norm_squared)
   part2 = x / torch.sqrt(norm_squared+ 1e-16)
 
