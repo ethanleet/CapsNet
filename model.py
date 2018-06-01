@@ -118,6 +118,7 @@ class ReconstructionModule(nn.Module):
       nn.Sigmoid()
     )
   
+# TODO: remove data as parameter
   def forward(self, x, data, target=None):
     batch_size = x.size(0)
     if target is None:
