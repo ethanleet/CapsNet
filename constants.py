@@ -6,3 +6,13 @@ PLOT_DIR = "plots"
 LOG_DIR = "logs"
 # Directory to save images
 IMAGES_SAVE_DIR = "reconstructions"
+
+# Default values for command arguments
+DEFAULT_LEARNING_RATE = 0.001
+DEFAULT_ALPHA = 0.0005 # Scaling factor for reconstruction loss
+DEFAULT_DATASET = "mnist" # 'mnist', 'small_norb'
+DEFAULT_DECODER = "FC" # 'FC' or 'Conv'
+DEFAULT_BATCH_SIZE = 128
+DEFAULT_EPOCHS = 300 # DEFAULT_EPOCHS = 300
+DEFAULT_USE_GPU = True
+DEFAULT_DISPLAY_STEP = 469 # Interval between two stats saved
