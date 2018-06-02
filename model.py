@@ -66,14 +66,14 @@ class ClassCapsules(nn.Module):
     self.num_routes = num_routes
     self.num_capsules = num_capsules
     self.routing_iterations = routing_iterations
+    
     self.W = nn.Parameter(torch.normal(mean = torch.zeros(1,
                                                           num_routes,
                                                           num_capsules,
                                                           out_channels,
                                                           in_channels), std=0.05))
     self.bias = nn.Parameter(torch.normal(mean = torch.zeros(1,1, num_capsules, out_channels,1), std=0.05))
-                                                             
-  
+
   def forward(self, x):
     batch_size = x.size(0)
     x = torch.stack([x] * self.num_capsules, dim=2).unsqueeze(4)
@@ -89,11 +89,10 @@ class ClassCapsules(nn.Module):
     for it in range(self.routing_iterations):
       c_ij = functional.softmax(b_ij, dim=1) # Not sure if it should be dim=1
       c_ij = torch.cat([c_ij] * batch_size, dim=0).unsqueeze(4)
-      
-      s_j = (c_ij * u_hat).sum(dim=1, keepdim=True) 
-      #shape: [batch_size, 1, num_capsules, out_channels, 1]
-      v_j = squash(s_j) + self.bias
-      
+
+      s_j = (c_ij * u_hat).sum(dim=1, keepdim=True) + self.bias
+      v_j = squash(s_j, dim=-2)
+
       if it < self.routing_iterations - 1: 
         uhatv_product = torch.matmul(u_hat.transpose(3,4),
                             torch.cat([v_j] * self.num_routes, dim=1))
@@ -118,6 +117,7 @@ class ReconstructionModule(nn.Module):
       nn.Sigmoid()
     )
   
+# TODO: remove data as parameter
   def forward(self, x, data, target=None):
     batch_size = x.size(0)
     if target is None:
