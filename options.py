@@ -10,6 +10,20 @@ def print_options(options):
         print("{:15s} {}".format(key, values[key]))
     print("-"*80)        
 
+def log_options(options):
+    logname = "options.txt"
+    log_file = os.path.join(LOG_DIR, logname)
+    if not os.path.isdir(LOG_DIR):
+        os.makedirs(LOG_DIR)
+    
+    f = open(log_file, 'w')
+
+    f.write("Using options:\n")
+    values = vars(options)
+    for key in values.keys():
+        f.write("{:15s} {}\n".format(key, values[key]))
+    f.close()
+    
 def create_options():
     parser = OptionParser()
     parser.add_option("-l", "--lr", dest="learning_rate", default=DEFAULT_LEARNING_RATE, type="float",
@@ -34,6 +48,8 @@ def create_options():
     
     options, args = parser.parse_args()
     print_options(options)
+    log_options(options)
+    
     return options
 
 
