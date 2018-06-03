@@ -31,6 +31,8 @@ def create_options():
     parser.add_option("-a", "--alpha", dest="alpha", default=DEFAULT_ALPHA, type="float",
                       help="Alpha constant from paper (Amount of reconstruction loss)")
     parser.add_option("--dataset", dest="dataset", default=DEFAULT_DATASET, help="Set wanted dataset. Options: [mnist, small_norb]")
+    parser.add_option("-r", "--routing", dest="routing_iterations", default=DEFAULT_ROUTING_ITERATIONS, type="int",
+                      help="Number of routing iterations to use")
     
     options, args = parser.parse_args()
     print_options(options)

@@ -27,7 +27,7 @@ def transform_data(data,target,use_gpu):
 
 
 def main(opts):
-    capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha)
+    capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha, routing_iterations = opts.routing_iterations)
     if opts.use_gpu:
         capsnet.cuda()
     optimizer = torch.optim.Adam(capsnet.parameters(), lr=opts.learning_rate)
