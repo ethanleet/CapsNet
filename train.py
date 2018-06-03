@@ -36,7 +36,7 @@ def get_network(opts):
 
 def load_model(opts, capsnet): 
     model_path = path.join(SAVE_DIR, opts.filepath)
-    if path.isfile(model_path) and opts.load_saved:
+    if path.isfile(model_path):
         print("Saved model found")
         capsnet.load_state_dict(torch.load(model_path))
     else:

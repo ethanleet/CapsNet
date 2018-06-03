@@ -33,8 +33,7 @@ def create_options():
     parser.add_option("-b", "--batch_size", dest="batch_size", default=DEFAULT_BATCH_SIZE, type="int")
     parser.add_option("-e", "--epochs", dest="epochs", default=DEFAULT_EPOCHS, type="int",
                       help="Number of epochs to train for")
-    parser.add_option("-s", "--saved", dest="load_saved", default=False, action="store_true")
-    parser.add_option("-f", "--file", dest="filepath", default="modelk.pt",
+    parser.add_option("-f", "--file", dest="filepath", default="", type="string",
                       help="Name of the model to be loaded")
     parser.add_option("-g", "--use_gpu", dest="use_gpu", default=DEFAULT_USE_GPU, action="store_false",
                       help="Indicates whether or not to use GPU")
