@@ -15,24 +15,26 @@ from model import CapsNet
 from options import create_options
 from tqdm import tqdm
 
-def onehot(tensor):
-    return torch.eye(10).cuda().index_select(dim=0, index=tensor) # One-hot encode 
+def onehot(tensor, num_classes=10):
+    return torch.eye(num_classes).cuda().index_select(dim=0, index=tensor) # One-hot encode 
 
-def transform_data(data,target,use_gpu):
+def transform_data(data,target,use_gpu, num_classes=10):
     data, target = Variable(data), Variable(target)
     if use_gpu:
         data, target = data.cuda(), target.cuda()
-    target = onehot(target)
+    target = onehot(target, num_classes=num_classes)
     return data, target
 
-
-def main(opts):
-    capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha, routing_iterations = opts.routing_iterations)
+def get_network(opts):
+    if opts.dataset == "mnist":
+        capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha, routing_iterations = opts.routing_iterations)
+    if opts.dataset == "small_norb":
+        capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha, imsize=28, num_classes=5, routing_iterations = opts.routing_iterations)
     if opts.use_gpu:
         capsnet.cuda()
-    optimizer = torch.optim.Adam(capsnet.parameters(), lr=opts.learning_rate)
+    return capsnet
 
-    """ Load saved model"""
+def load_model(opts, capsnet): 
     model_path = path.join(SAVE_DIR, opts.filepath)
     if path.isfile(model_path) and opts.load_saved:
         print("Saved model found")
@@ -40,16 +42,33 @@ def main(opts):
     else:
         print("Saved model not found; Model initialized.")
         initialize_weights(capsnet)
+    
 
-    train_loader, test_loader = load_mnist(opts.batch_size)
+def get_dataset(opts):
+    if opts.dataset == 'mnist':
+        return load_mnist(opts.batch_size)
+    if opts.dataset == 'small_norb':
+        return load_small_norb(opts.batch_size)
+    raise ValueError("Dataset not supported:" + opts.dataset)
+    
+
+def main(opts):
+    capsnet = get_network(opts)
+
+    optimizer = torch.optim.Adam(capsnet.parameters(), lr=opts.learning_rate)
+
+    """ Load saved model"""
+    load_model(opts, capsnet)
+
+    train_loader, test_loader = get_dataset(opts)
     stats = Statistics(LOG_DIR)
 
     for epoch in range(opts.epochs):
         capsnet.train()
         for batch, (data, target) in tqdm(list(enumerate(train_loader)), ascii=True, desc="Epoch:{:3d}, ".format(epoch)):
             optimizer.zero_grad()
-            data, target = transform_data(data, target, opts.use_gpu)
-            
+            data, target = transform_data(data, target, opts.use_gpu, num_classes=capsnet.num_classes)
+
             capsule_output, reconstructions, _ = capsnet(data, target)
             data = denormalize(data)
             loss, rec_loss = capsnet.loss(data, target, capsule_output, reconstructions)
@@ -62,7 +81,7 @@ def main(opts):
                 capsnet.eval()
 
                 for batch_id, (data, target) in enumerate(test_loader):
-                    data, target = transform_data(data, target, opts.use_gpu)
+                    data, target = transform_data(data, target, opts.use_gpu, num_classes=capsnet.num_classes)
                     
                     capsule_output, reconstructions, predictions = capsnet(data)
                     data = denormalize(data)

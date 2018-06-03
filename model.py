@@ -103,18 +103,18 @@ class ClassCapsules(nn.Module):
     return v_j.squeeze(1)
 
 class ReconstructionModule(nn.Module):
-  def __init__(self, capsule_size=16, num_capsules=10):
+  def __init__(self, capsule_size=16, num_capsules=10, imsize=28):
     super(ReconstructionModule, self).__init__()
     
     self.num_capsules = num_capsules
     self.capsule_size = capsule_size
-    
+    self.imsize = imsize
     self.decoder = nn.Sequential(
       nn.Linear(capsule_size*num_capsules, 512),
       nn.ReLU(),
       nn.Linear(512, 1024),        
       nn.ReLU(),
-      nn.Linear(1024, 784),
+      nn.Linear(1024, imsize*imsize),
       nn.Sigmoid()
     )
   
@@ -136,12 +136,12 @@ class ReconstructionModule(nn.Module):
     decoder_input = (x * masked[:, :, None, None]).view(batch_size, -1)
 
     reconstructions = self.decoder(decoder_input)
-    reconstructions = reconstructions.view(-1, 1, 28, 28)
+    reconstructions = reconstructions.view(-1, 1, self.imsize, self.imsize)
     
     return reconstructions, masked
 
 class ConvReconstructionModule(nn.Module):
-  def __init__(self, num_capsules=10, capsule_size=16):
+  def __init__(self, num_capsules=10, capsule_size=16, imsize=28):
     
     super(ConvReconstructionModule, self).__init__()
     self.num_capsules = num_capsules
@@ -151,7 +151,7 @@ class ConvReconstructionModule(nn.Module):
         nn.ReLU()
     )
     self.decoder = nn.Sequential(
-      nn.ConvTranspose2d(in_channels=10, out_channels=32, kernel_size=9, stride=2),
+      nn.ConvTranspose2d(in_channels=self.num_capsules, out_channels=32, kernel_size=9, stride=2),
       nn.BatchNorm2d(32),
       nn.ReLU(),
       nn.ConvTranspose2d(in_channels=32, out_channels=64, kernel_size=9, stride=1),  
@@ -177,7 +177,7 @@ class ConvReconstructionModule(nn.Module):
     masked = masked.index_select(dim=0, index=max_length_indices.squeeze(1).data)
     decoder_input = (x * masked[:, :, None, None]).view(batch_size, -1)
     decoder_input = self.FC(decoder_input)
-    decoder_input = decoder_input.view(batch_size,10, 6, 6)
+    decoder_input = decoder_input.view(batch_size,self.num_capsules, 6, 6)
     reconstructions = self.decoder(decoder_input)
     reconstructions = reconstructions.view(-1, 1, 28, 28)
     
@@ -191,17 +191,19 @@ class CapsNet(nn.Module):
   def __init__(self,
                alpha=0.0005, # Alpha from the loss function
                reconstruction_type = "FC",
+               imsize=28,
+               num_classes=10,
                routing_iterations=3
               ):
     super(CapsNet, self).__init__()
-    
+    self.num_classes = num_classes
     self.conv_layer = ConvLayer()
     self.primary_capsules = PrimaryCapules()
-    self.digit_caps = ClassCapsules(routing_iterations=routing_iterations)
+    self.digit_caps = ClassCapsules(num_capsules=num_classes, routing_iterations=routing_iterations)
     if reconstruction_type == "FC":
-        self.decoder = ReconstructionModule()
+        self.decoder = ReconstructionModule(imsize=imsize, num_capsules=num_classes)
     else:
-        self.decoder = ConvReconstructionModule()
+        self.decoder = ConvReconstructionModule(num_capsules=num_classes)
     
     self.mse_loss = nn.MSELoss(reduce=False)
     self.alpha = alpha
@@ -213,7 +215,7 @@ class CapsNet(nn.Module):
     reconstruction, masked = self.decoder(output, x, target)
     return output, reconstruction, masked
   
-  def loss(self, images,labels, capsule_output,  reconstruction):
+  def loss(self, images, labels, capsule_output,  reconstruction):
     marg_loss = self.margin_loss(capsule_output, labels)
     rec_loss = self.reconstruction_loss(images, reconstruction)
     total_loss = (marg_loss + self.alpha*rec_loss).mean()
@@ -226,7 +228,7 @@ class CapsNet(nn.Module):
     
     left = functional.relu(0.9 - v_c).view(batch_size, -1) ** 2
     right = functional.relu(v_c - 0.1).view(batch_size, -1) ** 2
-    
+
     loss = labels * left + 0.5 *(1-labels)*right
     loss = loss.sum(dim=1)
     return loss
