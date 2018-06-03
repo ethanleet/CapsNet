@@ -87,7 +87,8 @@ class ClassCapsules(nn.Module):
       b_ij = b_ij.cuda()
     
     for it in range(self.routing_iterations):
-      c_ij = functional.softmax(b_ij, dim=1) # Not sure if it should be dim=1
+      c_ij = functional.softmax(b_ij, dim=2) # Not sure if it should be dim=1
+
       c_ij = torch.cat([c_ij] * batch_size, dim=0).unsqueeze(4)
 
       s_j = (c_ij * u_hat).sum(dim=1, keepdim=True) + self.bias
@@ -153,8 +154,6 @@ class ConvReconstructionModule(nn.Module):
       nn.ConvTranspose2d(in_channels=self.num_capsules, out_channels=32, kernel_size=9, stride=2),
       nn.BatchNorm2d(32),
       nn.ReLU(),
-        
-      
       nn.ConvTranspose2d(in_channels=32, out_channels=64, kernel_size=9, stride=1),  
       nn.BatchNorm2d(64), 
       nn.ReLU(),
@@ -194,12 +193,13 @@ class CapsNet(nn.Module):
                reconstruction_type = "FC",
                imsize=28,
                num_classes=10
+               routing_iterations=3
               ):
     super(CapsNet, self).__init__()
     self.num_classes = num_classes
     self.conv_layer = ConvLayer()
     self.primary_capsules = PrimaryCapules()
-    self.digit_caps = ClassCapsules(num_capsules=num_classes)
+    self.digit_caps = ClassCapsules(num_capsules=num_classes, routing_iterations=routing_iterations)
     if reconstruction_type == "FC":
         self.decoder = ReconstructionModule(imsize=imsize, num_capsules=num_classes)
     else:

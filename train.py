@@ -27,9 +27,9 @@ def transform_data(data,target,use_gpu, num_classes=10):
 
 def get_network(opts):
     if opts.dataset == "mnist":
-        capsnet =  CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha)
+        capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha, routing_iterations = opts.routing_iterations)
     if opts.dataset == "small_norb":
-        capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha, imsize=28, num_classes=5)
+        capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha, imsize=28, num_classes=5, routing_iterations = opts.routing_iterations)
     if opts.use_gpu:
         capsnet.cuda()
     return capsnet
