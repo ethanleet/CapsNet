@@ -192,7 +192,7 @@ class CapsNet(nn.Module):
                alpha=0.0005, # Alpha from the loss function
                reconstruction_type = "FC",
                imsize=28,
-               num_classes=10
+               num_classes=10,
                routing_iterations=3
               ):
     super(CapsNet, self).__init__()
