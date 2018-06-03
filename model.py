@@ -30,8 +30,10 @@ class PrimaryCapules(nn.Module):
                num_capsules=8, 
                in_channels=256, 
                out_channels=32, 
-               kernel_size=9):
+               kernel_size=9,
+               cifar10=False):
     super(PrimaryCapules, self).__init__()
+    self.cifar10 = cifar10
     self.capsules = nn.ModuleList([
       nn.Sequential(
       nn.Conv2d(in_channels=in_channels,
@@ -47,7 +49,10 @@ class PrimaryCapules(nn.Module):
   def forward(self, x):
     output = [caps(x) for caps in self.capsules]
     output = torch.stack(output, dim=1)
-    output = output.view(x.size(0), 32*6*6, -1)
+    if self.cifar10 == False:
+        output = output.view(x.size(0), 32*6*6, -1)
+    else:
+        output = output.view(x.size(0), 32*8*8, -1)
     
     return squash(output)
 
@@ -103,22 +108,23 @@ class ClassCapsules(nn.Module):
     return v_j.squeeze(1)
 
 class ReconstructionModule(nn.Module):
-  def __init__(self, capsule_size=16, num_capsules=10, imsize=28):
+  def __init__(self, capsule_size=16, num_capsules=10, imsize=28,img_channel=1):
     super(ReconstructionModule, self).__init__()
     
     self.num_capsules = num_capsules
     self.capsule_size = capsule_size
     self.imsize = imsize
+    self.img_channel = img_channel
     self.decoder = nn.Sequential(
-      nn.Linear(capsule_size*num_capsules, 512),
-      nn.ReLU(),
-      nn.Linear(512, 1024),        
-      nn.ReLU(),
-      nn.Linear(1024, imsize*imsize),
-      nn.Sigmoid()
+          nn.Linear(capsule_size*num_capsules, 512),
+          nn.ReLU(),
+          nn.Linear(512, 1024),        
+          nn.ReLU(),
+          nn.Linear(1024, imsize*imsize*img_channel),
+          nn.Sigmoid()
     )
-  
-# TODO: remove data as parameter
+        
+  # TODO: remove data as parameter
   def forward(self, x, data, target=None):
     batch_size = x.size(0)
     if target is None:
@@ -136,8 +142,7 @@ class ReconstructionModule(nn.Module):
     decoder_input = (x * masked[:, :, None, None]).view(batch_size, -1)
 
     reconstructions = self.decoder(decoder_input)
-    reconstructions = reconstructions.view(-1, 1, self.imsize, self.imsize)
-    
+    reconstructions = reconstructions.view(-1, self.img_channel, self.imsize, self.imsize)
     return reconstructions, masked
 
 class ConvReconstructionModule(nn.Module):
@@ -193,15 +198,24 @@ class CapsNet(nn.Module):
                reconstruction_type = "FC",
                imsize=28,
                num_classes=10,
-               routing_iterations=3
+               routing_iterations=3,
+               dataset="mnist"
               ):
     super(CapsNet, self).__init__()
     self.num_classes = num_classes
-    self.conv_layer = ConvLayer()
-    self.primary_capsules = PrimaryCapules()
-    self.digit_caps = ClassCapsules(num_capsules=num_classes, routing_iterations=routing_iterations)
+    if dataset=="cifar10":
+        self.conv_layer = ConvLayer(in_channels=3)
+        self.primary_capsules = PrimaryCapules(cifar10=True)
+        self.digit_caps = ClassCapsules(num_capsules=num_classes,num_routes=32*8*8, routing_iterations=routing_iterations)
+    else:
+        self.conv_layer = ConvLayer()
+        self.primary_capsules = PrimaryCapules()
+        self.digit_caps = ClassCapsules(num_capsules=num_classes, routing_iterations=routing_iterations)
     if reconstruction_type == "FC":
-        self.decoder = ReconstructionModule(imsize=imsize, num_capsules=num_classes)
+        if dataset=="cifar10":
+            self.decoder = ReconstructionModule(imsize=imsize, num_capsules=num_classes ,img_channel=3)
+        else:
+            self.decoder = ReconstructionModule(imsize=imsize, num_capsules=num_classes )
     else:
         self.decoder = ConvReconstructionModule(num_capsules=num_classes)
     
