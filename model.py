@@ -27,11 +27,12 @@ class ConvLayer(nn.Module):
 class PrimaryCapules(nn.Module):
   
   def __init__(self, 
-               num_capsules=8, 
+               num_capsules=32, 
                in_channels=256, 
-               out_channels=32, 
+               out_channels=8, 
                kernel_size=9,
                cifar10=False):
+
     super(PrimaryCapules, self).__init__()
     self.cifar10 = cifar10
     self.capsules = nn.ModuleList([
