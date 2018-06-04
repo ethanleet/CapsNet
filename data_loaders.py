@@ -1,7 +1,7 @@
 from torchvision import datasets, transforms
 import torch
 from constants import * 
-from smallNorb import smallNORB
+from smallNorb import SmallNORB
 def load_mnist(batch_size):
   dataset_transform = transforms.Compose([
                transforms.ToTensor(),
@@ -44,8 +44,8 @@ def load_small_norb(batch_size):
                           transforms.Normalize((0.,), (0.3081,))
                       ])
     
-    train_dataset = smallNORB(path, train=True, download=True, transform=train_transform)
-    test_dataset = smallNORB(path, train=False, transform=test_transform)
+    train_dataset = SmallNORB(path, train=True, download=True, transform=train_transform)
+    test_dataset = SmallNORB(path, train=False, transform=test_transform)
     
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size,
                                                shuffle=True)
