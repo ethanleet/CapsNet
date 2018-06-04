@@ -31,7 +31,7 @@ def get_network(opts):
     if opts.dataset == "small_norb":
         capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha, imsize=28, num_classes=5, routing_iterations = opts.routing_iterations)
     if opts.dataset == "cifar10":
-        capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha,imsize=32, routing_iterations = opts.routing_iterations,dataset="cifar10")
+        capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha,imsize=32, routing_iterations = opts.routing_iterations,primary_caps_gridsize=8,img_channels=3)
     if opts.use_gpu:
         capsnet.cuda()
     return capsnet
