@@ -30,6 +30,8 @@ def get_network(opts):
         capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha, routing_iterations = opts.routing_iterations)
     if opts.dataset == "small_norb":
         capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha, imsize=28, num_classes=5, routing_iterations = opts.routing_iterations)
+    if opts.dataset == "cifar10":
+        capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha,imsize=32, routing_iterations = opts.routing_iterations,dataset="cifar10")
     if opts.use_gpu:
         capsnet.cuda()
     return capsnet
@@ -49,6 +51,8 @@ def get_dataset(opts):
         return load_mnist(opts.batch_size)
     if opts.dataset == 'small_norb':
         return load_small_norb(opts.batch_size)
+    if opts.dataset == 'cifar10':
+        return load_cifar10(opts.batch_size)
     raise ValueError("Dataset not supported:" + opts.dataset)
     
 
@@ -98,7 +102,10 @@ def main(opts):
                     data, _ = transform_data(data, target, opts.use_gpu)
                     _, reconstructions, _ = capsnet(data)
                     filename = "reconstruction_epoch_{}.png".format(epoch)
-                    save_images(IMAGES_SAVE_DIR, filename, data, reconstructions)
+                    if opts.dataset == 'cifar10':
+                        save_images_cifar10(IMAGES_SAVE_DIR, filename, data, reconstructions)
+                    else:
+                        save_images(IMAGES_SAVE_DIR, filename, data, reconstructions)
                 
                 # Save model
                 model_path = get_path(SAVE_DIR, "model{}.pt".format(epoch))

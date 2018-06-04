@@ -1,137 +1,245 @@
-"""SmallNorb dataset loader taken from https://github.com/yl-1993/Matrix-Capsules-EM-PyTorch/blob/master/datasets/norb.py """
+# Loader taken from https://github.com/mavanb/vision/blob/448fac0f38cab35a387666d553b9d5e4eec4c5e6/torchvision/datasets/utils.py
 
 from __future__ import print_function
-import torch.utils.data as data
-from PIL import Image
 import os
-import os.path
 import errno
-import numpy as np
-import torch
-import codecs
 import struct
 
+import torch
+import torch.utils.data as data
+import numpy as np
+from PIL import Image
+from torchvision.datasets.utils import download_url, check_integrity
 
 
-class NORB(data.Dataset):
-    """`NORB <https://cs.nyu.edu/~ylclab/data/norb-v1.0/>`_ Dataset.
-    The training set is composed of 5 instances of each category (instances 4, 6, 7, 8 and 9),
-    and the test set of the remaining 5 instances (instances 0, 1, 2, 3, and 5). 
-    The image pairs were taken by two cameras. Labels and additional info are the same
-    for a stereo image pair. More details about the data collection can be found in
-    `http://leon.bottou.org/publications/pdf/cvpr-2004.pdf`.
-    
+class SmallNORB(data.Dataset):
+    """`MNIST <https://cs.nyu.edu/~ylclab/data/norb-v1.0-small//>`_ Dataset.
     Args:
-        root (string): Root directory of dataset where ``processed/training.pt``
-            and  ``processed/test.pt`` exist.
-        train (bool, optional): If True, creates dataset from ``training.pt``,
-            otherwise from ``test.pt``.
+        root (string): Root directory of dataset where processed folder and
+            and  raw folder exist.
+        train (bool, optional): If True, creates dataset from the training files,
+            otherwise from the test files.
         download (bool, optional): If true, downloads the dataset from the internet and
-            puts it in root directory. If dataset is already downloaded, it is not
+            puts it in root directory. If the dataset is already processed, it is not processed
+            and downloaded again. If dataset is only already downloaded, it is not
             downloaded again.
         transform (callable, optional): A function/transform that  takes in an PIL image
             and returns a transformed version. E.g, ``transforms.RandomCrop``
         target_transform (callable, optional): A function/transform that takes in the
             target and transforms it.
+        info_transform (callable, optional): A function/transform that takes in the
+            info and transforms it.
+        mode (string, optional): Denotes how the images in the data files are returned. Possible values:
+            - all (default): both left and right are included separately.
+            - stereo: left and right images are included as corresponding pairs.
+            - left: only the left images are included.
+            - right: only the right images are included.
     """
+
+    dataset_root = "https://cs.nyu.edu/~ylclab/data/norb-v1.0-small/"
+    data_files = {
+        'train': {
+            'dat': {
+                "name": 'smallnorb-5x46789x9x18x6x2x96x96-training-dat.mat',
+                "md5_gz": "66054832f9accfe74a0f4c36a75bc0a2",
+                "md5": "8138a0902307b32dfa0025a36dfa45ec"
+            },
+            'info': {
+                "name": 'smallnorb-5x46789x9x18x6x2x96x96-training-info.mat',
+                "md5_gz": "51dee1210a742582ff607dfd94e332e3",
+                "md5": "19faee774120001fc7e17980d6960451"
+            },
+            'cat': {
+                "name": 'smallnorb-5x46789x9x18x6x2x96x96-training-cat.mat',
+                "md5_gz": "23c8b86101fbf0904a000b43d3ed2fd9",
+                "md5": "fd5120d3f770ad57ebe620eb61a0b633"
+            },
+        },
+        'test': {
+            'dat': {
+                "name": 'smallnorb-5x01235x9x18x6x2x96x96-testing-dat.mat',
+                "md5_gz": "e4ad715691ed5a3a5f138751a4ceb071",
+                "md5": "e9920b7f7b2869a8f1a12e945b2c166c"
+            },
+            'info': {
+                "name": 'smallnorb-5x01235x9x18x6x2x96x96-testing-info.mat',
+                "md5_gz": "a9454f3864d7fd4bb3ea7fc3eb84924e",
+                "md5": "7c5b871cc69dcadec1bf6a18141f5edc"
+            },
+            'cat': {
+                "name": 'smallnorb-5x01235x9x18x6x2x96x96-testing-cat.mat',
+                "md5_gz": "5aa791cd7e6016cf957ce9bdb93b8603",
+                "md5": "fd5120d3f770ad57ebe620eb61a0b633"
+            },
+        },
+    }
 
     raw_folder = 'raw'
     processed_folder = 'processed'
-    training_file = 'training.pt'
-    test_file = 'test.pt'
-    types = ['dat', 'cat', 'info']
-    urls = {}
+    train_image_file = 'train_img'
+    train_label_file = 'train_label'
+    train_info_file = 'train_info'
+    test_image_file = 'test_img'
+    test_label_file = 'test_label'
+    test_info_file = 'test_info'
+    extension = '.pt'
 
-    def __init__(self, root, train=True, transform=None, target_transform=None, download=False):
-        if len(self.urls) == 0:
-            for k in self.types:
-                self.urls['test_{}'.format(k)] = \
-                         ['https://cs.nyu.edu/~ylclab/data/norb-v1.0/norb-5x01235x9x18x6x2x108x108-testing-{:02d}-{}.mat.gz' \
-                         .format(x+1, k) for x in range(2)]
-                self.urls['train_{}'.format(k)] = \
-                         ['https://cs.nyu.edu/~ylclab/data/norb-v1.0/norb-5x46789x9x18x6x2x108x108-training-{:02d}-{}.mat.gz'\
-                         .format(x+1, k) for x in range(10)]
+    def __init__(self, root, train=True, transform=None, target_transform=None, info_transform=None, download=False,
+                 mode="all"):
+
         self.root = os.path.expanduser(root)
         self.transform = transform
         self.target_transform = target_transform
+        self.info_transform = info_transform
         self.train = train  # training set or test set
+        self.mode = mode
 
         if download:
             self.download()
 
         if not self._check_exists():
-            raise RuntimeError('Dataset not found.' +
+            raise RuntimeError('Dataset not found or corrupted.' +
                                ' You can use download=True to download it')
 
-        # image pairs stored in [i, :, :] and [i+1, :, :]
-        # they are sharing the same labels and info
-        if self.train:
-            self.train_data, self.train_labels, self.train_info = torch.load(
-                os.path.join(self.root, self.processed_folder, self.training_file))
-            size = len(self.train_labels)
-            assert size == len(self.train_info)
-            assert size*2 == len(self.train_data)
-            self.train_labels = self.train_labels.view(size).repeat(1, 2).view(2*size)
-            self.train_info = self.train_info.repeat(1, 2).view(2*size, 4)
-        else:
-            self.test_data, self.test_labels, self.test_info = torch.load(
-                os.path.join(self.root, self.processed_folder, self.test_file))
-            size = len(self.test_labels)
-            assert size == len(self.test_info)
-            assert size*2 == len(self.test_data)
-            self.test_labels = self.test_labels.view(size).repeat(1, 2).view(2*size)
-            self.test_info = self.test_info.repeat(1, 2).view(2*size, 4)
+        # load test or train set
+        image_file = self.train_image_file if self.train else self.test_image_file
+        label_file = self.train_label_file if self.train else self.test_label_file
+        info_file = self.train_info_file if self.train else self.test_info_file
+
+        # load labels
+        self.labels = self._load(label_file)
+
+        # load info files
+        self.infos = self._load(info_file)
+
+        # load right set
+        if self.mode == "left":
+            self.data = self._load("{}_left".format(image_file))
+
+        # load left set
+        elif self.mode == "right":
+            self.data = self._load("{}_right".format(image_file))
+
+        elif self.mode == "all" or self.mode == "stereo":
+            left_data = self._load("{}_left".format(image_file))
+            right_data = self._load("{}_right".format(image_file))
+
+            # load stereo
+            if self.mode == "stereo":
+                self.data = torch.stack((left_data, right_data), dim=1)
+
+            # load all
+            else:
+                self.data = torch.cat((left_data, right_data), dim=0)
 
     def __getitem__(self, index):
         """
         Args:
             index (int): Index
-
-        Note that additional info is not used in this experiment.
-
         Returns:
-            tuple: (image, target)
-            where target is index of the target class and info contains
-            ...
+            mode ``all'', ``left'', ``right'':
+                tuple: (image, target, info)
+            mode ``stereo'':
+                tuple: (image left, image right, target, info)
         """
-        if self.train:
-            img, target = self.train_data[index], self.train_labels[index]
-        else:
-            img, target = self.test_data[index], self.test_labels[index]
+        target = self.labels[index % 24300] if self.mode is "all" else self.labels[index]
+        if self.target_transform is not None:
+            target = self.target_transform(target)
 
-        # doing this so that it is consistent with all other datasets
+        info = self.infos[index % 24300] if self.mode is "all" else self.infos[index]
+        if self.info_transform is not None:
+            info = self.info_transform(info)
+
+        if self.mode == "stereo":
+            img_left = self._transform(self.data[index, 0])
+            img_right = self._transform(self.data[index, 1])
+            return img_left, img_right, target, info
+
+        img = self._transform(self.data[index])
+        return img, target
+
+    def __len__(self):
+        return len(self.data)
+
+    def _transform(self, img):
+        # doing this so that it is consistent with all other data sets
         # to return a PIL Image
         img = Image.fromarray(img.numpy(), mode='L')
 
         if self.transform is not None:
             img = self.transform(img)
+        return img
 
-        if self.target_transform is not None:
-            target = self.target_transform(target)
+    def _load(self, file_name):
+        return torch.load(os.path.join(self.root, self.processed_folder, file_name + self.extension))
 
-        return img, target
-
-    def __len__(self):
-        if self.train:
-            return len(self.train_data)
-        else:
-            return len(self.test_data)
+    def _save(self, file, file_name):
+        with open(os.path.join(self.root, self.processed_folder, file_name + self.extension), 'wb') as f:
+            torch.save(file, f)
 
     def _check_exists(self):
-        return os.path.exists(os.path.join(self.root, self.processed_folder, self.training_file)) and \
-            os.path.exists(os.path.join(self.root, self.processed_folder, self.test_file))
+        """ Check if processed files exists."""
+        files = (
+            "{}_left".format(self.train_image_file),
+            "{}_right".format(self.train_image_file),
+            "{}_left".format(self.test_image_file),
+            "{}_right".format(self.test_image_file),
+            self.test_label_file,
+            self.train_label_file
+        )
+        fpaths = [os.path.exists(os.path.join(self.root, self.processed_folder, f + self.extension)) for f in files]
+        return False not in fpaths
+
+    def _flat_data_files(self):
+        return [j for i in self.data_files.values() for j in list(i.values())]
+
+    def _check_integrity(self):
+        """Check if unpacked files have correct md5 sum."""
+        root = self.root
+        for file_dict in self._flat_data_files():
+            filename = file_dict["name"]
+            md5 = file_dict["md5"]
+            fpath = os.path.join(root, self.raw_folder, filename)
+            if not check_integrity(fpath, md5):
+                return False
+        return True
 
     def download(self):
-        """Download the MNIST data if it doesn't exist in processed_folder already."""
-        from six.moves import urllib
+        """Download the SmallNORB data if it doesn't exist in processed_folder already."""
         import gzip
 
         if self._check_exists():
             return
 
-        # download files
+        # check if already extracted and verified
+        if self._check_integrity():
+            print('Files already downloaded and verified')
+        else:
+            # download and extract
+            for file_dict in self._flat_data_files():
+                url = self.dataset_root + file_dict["name"] + '.gz'
+                filename = file_dict["name"]
+                gz_filename = filename + '.gz'
+                md5 = file_dict["md5_gz"]
+                fpath = os.path.join(self.root, self.raw_folder, filename)
+                gz_fpath = fpath + '.gz'
+
+                # download if compressed file not exists and verified
+                download_url(url, os.path.join(self.root, self.raw_folder), gz_filename, md5)
+
+                print('# Extracting data {}\n'.format(filename))
+
+                with open(fpath, 'wb') as out_f, \
+                        gzip.GzipFile(gz_fpath) as zip_f:
+                    out_f.write(zip_f.read())
+
+                os.unlink(gz_fpath)
+
+        # process and save as torch files
+        print('Processing...')
+
+        # create processed folder
         try:
-            os.makedirs(os.path.join(self.root, self.raw_folder))
             os.makedirs(os.path.join(self.root, self.processed_folder))
         except OSError as e:
             if e.errno == errno.EEXIST:
@@ -139,177 +247,99 @@ class NORB(data.Dataset):
             else:
                 raise
 
-        for k in self.urls:
-            for url in self.urls[k]:
-                print('Downloading ' + url)
-                data = urllib.request.urlopen(url)
-                filename = url.rpartition('/')[2]
-                file_path = os.path.join(self.root, self.raw_folder, filename)
-                with open(file_path, 'wb') as f:
-                    f.write(data.read())
-                with open(file_path.replace('.gz', ''), 'wb') as out_f, \
-                        gzip.GzipFile(file_path) as zip_f:
-                    out_f.write(zip_f.read())
-                os.unlink(file_path)
+        # read train files
+        left_train_img, right_train_img = self._read_image_file(self.data_files["train"]["dat"]["name"])
+        train_info = self._read_info_file(self.data_files["train"]["info"]["name"])
+        train_label = self._read_label_file(self.data_files["train"]["cat"]["name"])
 
-        # process and save as torch files
-        print('Processing...')
+        # read test files
+        left_test_img, right_test_img = self._read_image_file(self.data_files["test"]["dat"]["name"])
+        test_info = self._read_info_file(self.data_files["test"]["info"]["name"])
+        test_label = self._read_label_file(self.data_files["test"]["cat"]["name"])
 
-        parsed = {}
-        for k in self.urls:
-            op = get_op(k)
-            for url in self.urls[k]:
-                filename = url.rpartition('/')[2].replace('.gz', '')
-                path = os.path.join(self.root, self.raw_folder, filename)
-                print(path)
-                if k not in parsed:
-                    parsed[k] = op(path)
-                else:
-                    parsed[k] = torch.cat([parsed[k], op(path)], dim=0)
-                
-        training_set = (
-            parsed['train_dat'],
-            parsed['train_cat'],
-            parsed['train_info']
-        )
-        test_set = (
-            parsed['test_dat'],
-            parsed['test_cat'],
-            parsed['test_info']
-        )
-        with open(os.path.join(self.root, self.processed_folder, self.training_file), 'wb') as f:
-            torch.save(training_set, f)
-        with open(os.path.join(self.root, self.processed_folder, self.test_file), 'wb') as f:
-            torch.save(test_set, f)
+        # save training files
+        self._save(left_train_img, "{}_left".format(self.train_image_file))
+        self._save(right_train_img, "{}_right".format(self.train_image_file))
+        self._save(train_label, self.train_label_file)
+        self._save(train_info, self.train_info_file)
+
+        # save test files
+        self._save(left_test_img, "{}_left".format(self.test_image_file))
+        self._save(right_test_img, "{}_right".format(self.test_image_file))
+        self._save(test_label, self.test_label_file)
+        self._save(test_info, self.test_info_file)
 
         print('Done!')
 
-    def __repr__(self):
-        fmt_str = 'Dataset ' + self.__class__.__name__ + '\n'
-        fmt_str += '    Number of datapoints: {}\n'.format(self.__len__())
-        tmp = 'train' if self.train is True else 'test'
-        fmt_str += '    Split: {}\n'.format(tmp)
-        fmt_str += '    Root Location: {}\n'.format(self.root)
-        tmp = '    Transforms (if any): '
-        fmt_str += '{0}{1}\n'.format(tmp, self.transform.__repr__().replace('\n', '\n' + ' ' * len(tmp)))
-        tmp = '    Target Transforms (if any): '
-        fmt_str += '{0}{1}'.format(tmp, self.target_transform.__repr__().replace('\n', '\n' + ' ' * len(tmp)))
-        return fmt_str
+    @staticmethod
+    def _parse_header(file_pointer):
+        # Read magic number and ignore
+        struct.unpack('<BBBB', file_pointer.read(4))  # '<' is little endian)
 
-class smallNORB(NORB):
-    """`smallNORB <https://cs.nyu.edu/%7Eylclab/data/norb-v1.0-small/>`_ Dataset.
-    Args:
-        root (string): Root directory of dataset where ``processed/training.pt``
-            and  ``processed/test.pt`` exist.
-        train (bool, optional): If True, creates dataset from ``training.pt``,
-            otherwise from ``test.pt``.
-        download (bool, optional): If true, downloads the dataset from the internet and
-            puts it in root directory. If dataset is already downloaded, it is not
-            downloaded again.
-        transform (callable, optional): A function/transform that  takes in an PIL image
-            and returns a transformed version. E.g, ``transforms.RandomCrop``
-        target_transform (callable, optional): A function/transform that takes in the
-            target and transforms it.
-    """
-    urls = {
-        'train_dat': ['https://cs.nyu.edu/%7Eylclab/data/norb-v1.0-small/smallnorb-5x46789x9x18x6x2x96x96-training-dat.mat.gz'],
-        'train_cat': ['https://cs.nyu.edu/%7Eylclab/data/norb-v1.0-small/smallnorb-5x46789x9x18x6x2x96x96-training-cat.mat.gz'],
-        'train_info': ['https://cs.nyu.edu/%7Eylclab/data/norb-v1.0-small/smallnorb-5x46789x9x18x6x2x96x96-training-info.mat.gz'],
-        'test_dat': ['https://cs.nyu.edu/%7Eylclab/data/norb-v1.0-small/smallnorb-5x01235x9x18x6x2x96x96-testing-dat.mat.gz'],
-        'test_cat': ['https://cs.nyu.edu/%7Eylclab/data/norb-v1.0-small/smallnorb-5x01235x9x18x6x2x96x96-testing-cat.mat.gz'],
-        'test_info': ['https://cs.nyu.edu/%7Eylclab/data/norb-v1.0-small/smallnorb-5x01235x9x18x6x2x96x96-testing-info.mat.gz'],
-    }
+        # Read dimensions
+        dimensions = []
+        num_dims, = struct.unpack('<i', file_pointer.read(4))  # '<' is little endian)
+        for _ in range(num_dims):
+            dimensions.extend(struct.unpack('<i', file_pointer.read(4)))
 
+        return dimensions
 
-def magic2type(magic):
-    m2t = {'1E3D4C51': 'single precision matrix',
-           '1E3D4C52': 'packed matrix',
-           '1E3D4C53': 'double precision matrix',
-           '1E3D4C54': 'integer matrix',
-           '1E3D4C55': 'byte matrix',
-           '1E3D4C56': 'short matrix'}
-    m = bytearray(reversed(magic)).hex().upper()
-    return m2t[m]
+    def _read_image_file(self, file_name):
+        fpath = os.path.join(self.root, self.raw_folder, file_name)
+        with open(fpath, mode='rb') as f:
+            dimensions = self._parse_header(f)
+            assert dimensions == [24300, 2, 96, 96]
+            num_samples, _, height, width = dimensions
 
-def parse_header(fd):
-    magic = struct.unpack('<BBBB', fd.read(4))
-    ndim, = struct.unpack('<i', fd.read(4))
-    dim = []
-    for _ in range(ndim):
-        dim += struct.unpack('<i', fd.read(4))
+            left_samples = np.zeros(shape=(num_samples, height, width), dtype=np.uint8)
+            right_samples = np.zeros(shape=(num_samples, height, width), dtype=np.uint8)
 
-    header = {'magic': magic,
-              'type': magic2type(magic),
-              'dim': dim}
-    return header
+            for i in range(num_samples):
 
-def parse_cat_file(path):
-    """
-        -cat file stores corresponding category of images
-        Return:
-            ByteTensor of shape (N,)
-    """
-    with open(path, 'rb') as f:
-        header = parse_header(f)
-        num, = header['dim']
-        struct.unpack('<BBBB', f.read(4))
-        struct.unpack('<BBBB', f.read(4))
+                # left and right images stored in pairs, left first
+                left_samples[i, :, :] = self._read_image(f, height, width)
+                right_samples[i, :, :] = self._read_image(f, height, width)
 
-        labels = np.zeros(shape=num, dtype=np.int32)
-        for i in range(num):
-            labels[i], = struct.unpack('<i', f.read(4))
+        return torch.ByteTensor(left_samples), torch.ByteTensor(right_samples)
 
-        return torch.from_numpy(labels).long()
+    @staticmethod
+    def _read_image(file_pointer, height, width):
+        """Read raw image data and restore shape as appropriate. """
+        image = struct.unpack('<' + height * width * 'B', file_pointer.read(height * width))
+        image = np.uint8(np.reshape(image, newshape=(height, width)))
+        return image
 
-def parse_dat_file(path):
-    """
-        -dat file stores N image pairs. Each image pair, 
-        [i, :, :] and [i+1, :, :], includes two images
-        taken from two cameras. They share the category
-        and additional information.
-        Return:
-            ByteTensor of shape (2*N, 96, 96)
-    """
-    with open(path, 'rb') as f:
-        header = parse_header(f)
-        num, c, h, w = header['dim']
-        imgs = np.zeros(shape=(num * c, h, w), dtype=np.uint8)
+    def _read_label_file(self, file_name):
+        fpath = os.path.join(self.root, self.raw_folder, file_name)
+        with open(fpath, mode='rb') as f:
+            dimensions = self._parse_header(f)
+            assert dimensions == [24300]
+            num_samples = dimensions[0]
 
-        for i in range(num * c):
-            img = struct.unpack('<' + h * w * 'B', f.read(h * w))
-            imgs[i] = np.uint8(np.reshape(img, newshape=(h, w)))
+            struct.unpack('<BBBB', f.read(4))  # ignore this integer
+            struct.unpack('<BBBB', f.read(4))  # ignore this integer
 
-        return torch.from_numpy(imgs)
+            labels = np.zeros(shape=num_samples, dtype=np.int32)
+            for i in range(num_samples):
+                category, = struct.unpack('<i', f.read(4))
+                labels[i] = category
+            return torch.LongTensor(labels)
 
-def parse_info_file(path):
-    """
-        -info file stores the additional info for each image.
-        The specific meaning of each dimension is:
-            (:, 0): 10 instances
-            (:, 1): 9 elevation
-            (:, 2): 18 azimuth
-            (:, 3): 6 lighting conditions
-        Return:
-            ByteTensor of shape (N, 4)
-    """
-    with open(path, 'rb') as f:
-        header = parse_header(f)
-        num, num_info = header['dim']
-        struct.unpack('<BBBB', f.read(4))
-        info = np.zeros(shape=(num, num_info), dtype=np.int32)
-        for r in range(num):
-            for c in range(num_info):
-                info[r, c], = struct.unpack('<i', f.read(4))
+    def _read_info_file(self, file_name):
+        fpath = os.path.join(self.root, self.raw_folder, file_name)
+        with open(fpath, mode='rb') as f:
 
-        return torch.from_numpy(info)
+            dimensions = self._parse_header(f)
+            assert dimensions == [24300, 4]
+            num_samples, num_info = dimensions
 
-def get_op(key):
-    op_dic = {
-        'train_dat': parse_dat_file,
-        'train_cat': parse_cat_file,
-        'train_info': parse_info_file,
-        'test_dat': parse_dat_file,
-        'test_cat': parse_cat_file,
-        'test_info': parse_info_file
-    }
-    return op_dic[key]
+            struct.unpack('<BBBB', f.read(4))  # ignore this integer
+
+            infos = np.zeros(shape=(num_samples, num_info), dtype=np.int32)
+
+            for r in range(num_samples):
+                for c in range(num_info):
+                    info, = struct.unpack('<i', f.read(4))
+                    infos[r, c] = info
+
+        return torch.LongTensor(infos)

@@ -1,7 +1,7 @@
 from torchvision import datasets, transforms
 import torch
 from constants import * 
-from smallNorb import smallNORB
+from smallNorb import SmallNORB
 def load_mnist(batch_size):
   dataset_transform = transforms.Compose([
                transforms.ToTensor(),
@@ -44,8 +44,8 @@ def load_small_norb(batch_size):
                           transforms.Normalize((0.,), (0.3081,))
                       ])
     
-    train_dataset = smallNORB(path, train=True, download=True, transform=train_transform)
-    test_dataset = smallNORB(path, train=False, transform=test_transform)
+    train_dataset = SmallNORB(path, train=True, download=True, transform=train_transform)
+    test_dataset = SmallNORB(path, train=False, transform=test_transform)
     
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size,
                                                shuffle=True)
@@ -53,3 +53,25 @@ def load_small_norb(batch_size):
                                                shuffle=False)
     
     return train_loader, test_loader
+
+def load_cifar10(batch_size):
+    dataset_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            ])
+    train_dataset = datasets.CIFAR10('../data',
+                                    train=True,
+                                    download=True,
+                                    transform=dataset_transform)
+    test_dataset = datasets.CIFAR10('../data',
+                                    train=False,
+                                    download=True,
+                                    transform=dataset_transform)
+    
+    train_loader = torch.utils.data.DataLoader(train_dataset,
+                                              batch_size=batch_size,
+                                              shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_dataset,
+                                              batch_size=batch_size,
+                                              shuffle=False)
+    return train_loader,test_loader
