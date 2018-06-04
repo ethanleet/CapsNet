@@ -1,7 +1,7 @@
 from torchvision import datasets, transforms
 import torch
 from constants import * 
-from smallNorb import smallNORB
+from smallNorb import SmallNORB
 def load_mnist(batch_size):
   dataset_transform = transforms.Compose([
                transforms.ToTensor(),
