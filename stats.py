@@ -4,26 +4,32 @@ import os
 
 class Statistics:
   
-  def __init__(self, LOG_DIR):
+  def __init__(self, LOG_DIR, previous_log_file = None):
     self.TEST_LOSSES = []
     self.TRAIN_LOSSES = []
     self.TEST_ACC = []
     self.RECONSTRUCTION_LOSS = []
     self.RECONSTRUCTION_LOSS_TEST = []
     self.reset_tracking_stats()
-    self.initialize_logfile(LOG_DIR)
+    self.initialize_logfile(LOG_DIR, previous_log_file)
 
-  def initialize_logfile(self, LOG_DIR):
+  def initialize_logfile(self, LOG_DIR, previous_log_file):
+    # If the logfile already exists we continue to append to this.
+    if previous_log_file: 
+        self.log_file = os.path.join(LOG_DIR, previous_log_file)
+        if os.path.isfile(self.log_file): 
+            print("Logfile found and loaded.")
+            return
     logname = "log-{}.txt".format(time.time())
     self.log_file = os.path.join(LOG_DIR, logname)
     if not os.path.isdir(LOG_DIR):
         os.makedirs(LOG_DIR)
-    
+
     f = open(self.log_file, 'w')
 
     f.write("epoch, time, test_loss, train_loss, test_accuracy, reconstruction_loss_train, reconstruction_loss_test\n")
     f.close()
-  
+
   def reset_tracking_stats(self):
     self.train_loss = 0
     self.train_steps = 0

@@ -37,8 +37,6 @@ def create_options():
                       help="Name of the model to be loaded")
     parser.add_option("-g", "--use_gpu", dest="use_gpu", default=DEFAULT_USE_GPU, action="store_false",
                       help="Indicates whether or not to use GPU")
-    parser.add_option( "--display_step", dest="display_step", default=DEFAULT_DISPLAY_STEP, type="int",
-                      help="Interval between two stats saved")
     parser.add_option("--save_images", dest="save_images", default=True, action="store_false",
                       help="Set if you want to save reconstruction results each epoch")
     parser.add_option("-a", "--alpha", dest="alpha", default=DEFAULT_ALPHA, type="float",
@@ -46,6 +44,8 @@ def create_options():
     parser.add_option("--dataset", dest="dataset", default=DEFAULT_DATASET, help="Set wanted dataset. Options: [mnist, small_norb,cifar10]")
     parser.add_option("-r", "--routing", dest="routing_iterations", default=DEFAULT_ROUTING_ITERATIONS, type="int",
                       help="Number of routing iterations to use")
+    parser.add_option("--logfile", dest="log_filepath", default="", type="string",
+                      help="Path to previous logfile if continuing training")
     
     options, args = parser.parse_args()
     print_options(options)
