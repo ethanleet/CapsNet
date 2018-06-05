@@ -69,7 +69,7 @@ def main(opts):
 
     for epoch in range(opts.epochs):
         capsnet.train()
-        for batch, (data, target) in tqdm(list(enumerate(train_loader)), ascii=True, desc="Epoch:{:3d}, ".format(epoch)):
+        for batch, (data, target) in tqdm(list(enumerate(train_loader)), ascii=True, desc="Epoch{:3d}".format(epoch)):
             optimizer.zero_grad()
             data, target = transform_data(data, target, opts.use_gpu, num_classes=capsnet.num_classes)
 
@@ -83,7 +83,7 @@ def main(opts):
         
         """Evaluate on test set"""
         capsnet.eval()
-        for batch_id, (data, target) in enumerate(test_loader):
+        for batch_id, (data, target) in tqdm(list(enumerate(test_loader)), ascii=True, desc="Test {:3d}".format(epoch)):
             data, target = transform_data(data, target, opts.use_gpu, num_classes=capsnet.num_classes)
 
             capsule_output, reconstructions, predictions = capsnet(data)
