@@ -17,7 +17,6 @@ class ConvLayer(nn.Module):
                           out_channels=out_channels,
                           kernel_size=kernel_size,
                           stride=1),
-        nn.BatchNorm2d(out_channels),
         nn.ReLU()
     )
   def forward(self, x):
@@ -41,8 +40,7 @@ class PrimaryCapules(nn.Module):
                 out_channels=out_channels,
                 kernel_size=kernel_size,
                 stride=2,
-                padding=0),
-          
+                padding=0)
       )
        for i in range(num_capsules)
     ])
@@ -157,10 +155,8 @@ class ConvReconstructionModule(nn.Module):
     )
     self.decoder = nn.Sequential(
       nn.ConvTranspose2d(in_channels=self.num_capsules, out_channels=32, kernel_size=9, stride=2),
-      nn.BatchNorm2d(32),
       nn.ReLU(),
-      nn.ConvTranspose2d(in_channels=32, out_channels=64, kernel_size=9, stride=1),  
-      nn.BatchNorm2d(64), 
+      nn.ConvTranspose2d(in_channels=32, out_channels=64, kernel_size=9, stride=1),
       nn.ReLU(),
       nn.ConvTranspose2d(in_channels=64, out_channels=1, kernel_size=2, stride=1),
       nn.Sigmoid()
