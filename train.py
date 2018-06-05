@@ -65,7 +65,7 @@ def main(opts):
     load_model(opts, capsnet)
 
     train_loader, test_loader = get_dataset(opts)
-    stats = Statistics(LOG_DIR)
+    stats = Statistics(LOG_DIR, opts.log_filepath)
 
     for epoch in range(opts.epochs):
         capsnet.train()
@@ -80,37 +80,37 @@ def main(opts):
             optimizer.step()
             
             stats.track_train(loss.data.item(), rec_loss.data.item())
-            """Evaluate on test set"""
-            if batch % opts.display_step == 0:
-                capsnet.eval()
+        
+        """Evaluate on test set"""
+        capsnet.eval()
+        for batch_id, (data, target) in enumerate(test_loader):
+            data, target = transform_data(data, target, opts.use_gpu, num_classes=capsnet.num_classes)
 
-                for batch_id, (data, target) in enumerate(test_loader):
-                    data, target = transform_data(data, target, opts.use_gpu, num_classes=capsnet.num_classes)
-                    
-                    capsule_output, reconstructions, predictions = capsnet(data)
-                    data = denormalize(data)
-                    loss, rec_loss = capsnet.loss(data, target, capsule_output, reconstructions)
+            capsule_output, reconstructions, predictions = capsnet(data)
+            data = denormalize(data)
+            loss, rec_loss = capsnet.loss(data, target, capsule_output, reconstructions)
 
 
-                    stats.track_test(loss.data.item(),rec_loss.data.item(), target, predictions)
+            stats.track_test(loss.data.item(),rec_loss.data.item(), target, predictions)
 
-                stats.save_stats(epoch)
-                
-                # Save reconstruction image from testing set
-                if opts.save_images:
-                    data, target = iter(test_loader).next()
-                    data, _ = transform_data(data, target, opts.use_gpu)
-                    _, reconstructions, _ = capsnet(data)
-                    filename = "reconstruction_epoch_{}.png".format(epoch)
-                    if opts.dataset == 'cifar10':
-                        save_images_cifar10(IMAGES_SAVE_DIR, filename, data, reconstructions)
-                    else:
-                        save_images(IMAGES_SAVE_DIR, filename, data, reconstructions)
-                
-                # Save model
-                model_path = get_path(SAVE_DIR, "model{}.pt".format(epoch))
-                torch.save(capsnet.state_dict(), model_path)
-                capsnet.train()
+        stats.save_stats(epoch)
+
+        # Save reconstruction image from testing set
+        if opts.save_images:
+            data, target = iter(test_loader).next()
+            data, _ = transform_data(data, target, opts.use_gpu)
+            _, reconstructions, _ = capsnet(data)
+            filename = "reconstruction_epoch_{}.png".format(epoch)
+            if opts.dataset == 'cifar10':
+                save_images_cifar10(IMAGES_SAVE_DIR, filename, data, reconstructions)
+            else:
+                save_images(IMAGES_SAVE_DIR, filename, data, reconstructions)
+
+        # Save model
+        model_path = get_path(SAVE_DIR, "model{}.pt".format(epoch))
+        torch.save(capsnet.state_dict(), model_path)
+        capsnet.train()
+
 
 if __name__ == '__main__':
     opts = create_options()
