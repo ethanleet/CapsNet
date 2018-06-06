@@ -46,8 +46,12 @@ def create_options():
                       help="Number of routing iterations to use")
     parser.add_option("--logfile", dest="log_filepath", default="", type="string",
                       help="Path to previous logfile if continuing training")
+    parser.add_option("--gpu_ids", dest="gpu_ids", default=None, type="str",
+                     help="GPU IDS to use if training on multiple GPU")
     
     options, args = parser.parse_args()
+    if options.gpu_ids:
+        options.gpu_ids = [int(x) for x in options.gpu_ids.split(',')]
     print_options(options)
     log_options(options)
     
