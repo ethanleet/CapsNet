@@ -25,15 +25,45 @@ def transform_data(data,target,use_gpu, num_classes=10):
     target = onehot(target, num_classes=num_classes)
     return data, target
 
+class GPUParallell(nn.DataParallel):
+  
+  def __init__(self, capsnet, device_ids):
+    super(Test, self).__init__(capsnet, device_ids=device_ids)
+    self.capsnet = capsnet
+    self.num_classes = capsnet.num_classes
+    
+  def loss(self, images,labels, capsule_output,  reconstruction): 
+    return self.capsnet.loss(images, labels, capsule_output, reconstruction)
+  
+  def forward(self, x, target=None):
+    return self.capsnet(x, target)
+
 def get_network(opts):
     if opts.dataset == "mnist":
-        capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha, routing_iterations = opts.routing_iterations)
+        capsnet = CapsNet(reconstruction_type=opts.decoder,
+                          alpha = opts.alpha,
+                          routing_iterations = opts.routing_iterations,
+                          batchnorm=opts.batch_norm)
     if opts.dataset == "small_norb":
-        capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha, imsize=28, num_classes=5, routing_iterations = opts.routing_iterations)
+        capsnet = CapsNet(reconstruction_type=opts.decoder,
+                          alpha = opts.alpha,
+                          imsize=28,
+                          num_classes=5,
+                          routing_iterations = opts.routing_iterations, 
+                          batchnorm=opts.batch_norm)
     if opts.dataset == "cifar10":
-        capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha,imsize=32, routing_iterations = opts.routing_iterations,primary_caps_gridsize=8,img_channels=3)
+        capsnet = CapsNet(reconstruction_type=opts.decoder,
+                          alpha = opts.alpha,
+                          imsize=32, 
+                          routing_iterations = opts.routing_iterations,
+                          primary_caps_gridsize=8,
+                          img_channels=3, 
+                          batchnorm=opts.batch_norm)
     if opts.use_gpu:
         capsnet.cuda()
+    if opts.gpu_ids:
+        capsnet = GPUParallell(capsnet, opts.gpu_ids)
+        print("Training on GPU IDS:", opts.gpu_ids)
     return capsnet
 
 def load_model(opts, capsnet): 
