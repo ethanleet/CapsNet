@@ -15,20 +15,20 @@ def squash(x, dim=-1):
 
 def weights_init_xavier(m):
     classname = m.__class__.__name__
-    if classname.find('Conv') != -1 and classname != "ConvReconstructionModule":
+    if classname.find('Conv') != -1 and classname != "ConvReconstructionModule" and classname != "ConvLayer":
         nn.init.xavier_normal_(m.weight.data, gain=0.02)
     elif classname.find('Linear') != -1:
         nn.init.xavier_normal_(m.weight.data, gain=0.02)
     elif classname.find('BatchNorm2d') != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0.0)
+    elif classname == 'ClassCapsules': 
+        nn.init.xavier_normal_(m.W.data, gain=0.002)
+        nn.init.xavier_normal_(m.bias.data, gain=0.002)
         
         
 def initialize_weights(capsnet):
-	capsnet.conv_layer.conv.apply(weights_init_xavier)
-	capsnet.primary_capsules.apply(weights_init_xavier)
-	capsnet.decoder.apply(weights_init_xavier)
-	nn.init.xavier_normal_(capsnet.digit_caps.W)
+    capsnet.apply(weights_init_xavier)
     
 def denormalize(image):
     image = image - image.min()
