@@ -40,11 +40,25 @@ class GPUParallell(nn.DataParallel):
 
 def get_network(opts):
     if opts.dataset == "mnist":
-        capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha, routing_iterations = opts.routing_iterations)
+        capsnet = CapsNet(reconstruction_type=opts.decoder,
+                          alpha = opts.alpha,
+                          routing_iterations = opts.routing_iterations,
+                          batchnorm=opts.batch_norm)
     if opts.dataset == "small_norb":
-        capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha, imsize=28, num_classes=5, routing_iterations = opts.routing_iterations)
+        capsnet = CapsNet(reconstruction_type=opts.decoder,
+                          alpha = opts.alpha,
+                          imsize=28,
+                          num_classes=5,
+                          routing_iterations = opts.routing_iterations, 
+                          batchnorm=opts.batch_norm)
     if opts.dataset == "cifar10":
-        capsnet = CapsNet(reconstruction_type=opts.decoder, alpha = opts.alpha,imsize=32, routing_iterations = opts.routing_iterations,primary_caps_gridsize=8,img_channels=3)
+        capsnet = CapsNet(reconstruction_type=opts.decoder,
+                          alpha = opts.alpha,
+                          imsize=32, 
+                          routing_iterations = opts.routing_iterations,
+                          primary_caps_gridsize=8,
+                          img_channels=3, 
+                          batchnorm=opts.batch_norm)
     if opts.use_gpu:
         capsnet.cuda()
     if opts.gpu_ids:

@@ -47,7 +47,9 @@ def create_options():
     parser.add_option("--logfile", dest="log_filepath", default="", type="string",
                       help="Path to previous logfile if continuing training")
     parser.add_option("--gpu_ids", dest="gpu_ids", default=None, type="str",
-                     help="GPU IDS to use if training on multiple GPU")
+                     help="GPU IDS to use if training on multiple GPU. Give ID with comma seperators.")
+    parser.add_option("--batch_norm", dest="batch_norm", default=False, type=int,
+                      help="Turn on/off batch norm in encoder/decoder")
     
     options, args = parser.parse_args()
     if options.gpu_ids:
