@@ -185,11 +185,11 @@ class ConvReconstructionModule(nn.Module):
     self.capsule_size = capsule_size
     self.imsize = imsize
     self.img_channels = img_channels
-    
+    self.grid_size = 6
     if batchnorm:
       self.FC = nn.Sequential(
-        nn.Linear(capsule_size * num_capsules, num_capsules * 6 * 6 ),
-        nn.BatchNorm1d(num_capsules * 6 * 6),
+        nn.Linear(capsule_size * num_capsules, num_capsules * (self.grid_size)**2 ),
+        nn.BatchNorm1d(num_capsules * self.grid_size**2),
         nn.ReLU()
       )
       self.decoder = nn.Sequential(
@@ -204,11 +204,78 @@ class ConvReconstructionModule(nn.Module):
         )
     else:
         self.FC = nn.Sequential(
-            nn.Linear(capsule_size * num_capsules, num_capsules * 4 * 4 ),
+            nn.Linear(capsule_size * num_capsules, num_capsules *(self.grid_size**2) ),
             nn.ReLU()
         )
         self.decoder = nn.Sequential(
-          nn.ConvTranspose2d(in_channels=5, out_channels=32, kernel_size=9, stride=2),
+          nn.ConvTranspose2d(in_channels=self.num_capsules, out_channels=32, kernel_size=9, stride=2),
+          nn.ReLU(),
+          nn.ConvTranspose2d(in_channels=32, out_channels=64, kernel_size=9, stride=1),
+          nn.ReLU(),
+          nn.ConvTranspose2d(in_channels=64, out_channels=1, kernel_size=2, stride=1),
+          nn.Sigmoid()
+        )
+    
+  def forward(self, x, target=None):
+    batch_size = x.size(0)
+    if target is None:
+      classes = torch.norm(x, dim=2)
+      max_length_indices = classes.max(dim=1)[1].squeeze()
+    else:
+      max_length_indices = target.max(dim=1)[1]
+    masked = Variable(torch.eye(self.num_capsules))
+    
+    if USE_GPU:
+      masked  = masked.cuda()
+    masked = masked.index_select(dim=0, index=max_length_indices.data)
+    
+    decoder_input = (x * masked[:, :, None, None]).view(batch_size, -1)
+    decoder_input = self.FC(decoder_input)
+    decoder_input = decoder_input.view(batch_size,self.num_capsules, self.grid_size, self.grid_size)
+    reconstructions = self.decoder(decoder_input)
+    reconstructions = reconstructions.view(-1, self.img_channels, self.imsize, self.imsize)
+    
+    return reconstructions, masked
+
+
+
+
+class SmallNorbConvReconstructionModule(nn.Module):
+  def __init__(self, num_capsules=10, capsule_size=16, imsize=28,img_channels=1, batchnorm=False):
+    super(SmallNorbConvReconstructionModule, self).__init__()
+    self.num_capsules = num_capsules
+    self.capsule_size = capsule_size
+    self.imsize = imsize
+    self.img_channels = img_channels
+    
+    self.grid_size = 4
+    
+    if batchnorm:
+      self.FC = nn.Sequential(
+            nn.Linear(capsule_size * num_capsules, num_capsules *self.grid_size*self.grid_size),
+            nn.BatchNorm1d(num_capsules * self.grid_size**2),
+            nn.ReLU()
+        )
+      self.decoder = nn.Sequential(
+          nn.ConvTranspose2d(in_channels=num_capsules, out_channels=32, kernel_size=9, stride=2),
+          nn.BatchNorm2d(32),            
+          nn.ReLU(),
+          nn.ConvTranspose2d(in_channels=32, out_channels=64, kernel_size=9, stride=1),
+          nn.BatchNorm2d(64),
+          nn.ReLU(),
+          nn.ConvTranspose2d(in_channels=64, out_channels=128, kernel_size=9, stride=1),
+          nn.BatchNorm2d(128),
+          nn.ReLU(),
+          nn.ConvTranspose2d(in_channels=128, out_channels=1, kernel_size=2, stride=1),
+          nn.Sigmoid()
+        )
+    else:
+        self.FC = nn.Sequential(
+            nn.Linear(capsule_size * num_capsules, num_capsules *(self.grid_size**2) ),
+            nn.ReLU()
+        )
+        self.decoder = nn.Sequential(
+          nn.ConvTranspose2d(in_channels=num_capsules, out_channels=32, kernel_size=9, stride=2),
           nn.ReLU(),
           nn.ConvTranspose2d(in_channels=32, out_channels=64, kernel_size=9, stride=1),
           nn.ReLU(),
@@ -232,8 +299,9 @@ class ConvReconstructionModule(nn.Module):
     masked = masked.index_select(dim=0, index=max_length_indices.data)
     
     decoder_input = (x * masked[:, :, None, None]).view(batch_size, -1)
+    print(decoder_input.shape)
     decoder_input = self.FC(decoder_input)
-    decoder_input = decoder_input.view(batch_size,self.num_capsules, 4, 4)
+    decoder_input = decoder_input.view(batch_size,self.num_capsules, self.grid_size, self.grid_size)
     reconstructions = self.decoder(decoder_input)
     reconstructions = reconstructions.view(-1, self.img_channels, self.imsize, self.imsize)
     
@@ -266,6 +334,9 @@ class CapsNet(nn.Module):
     if reconstruction_type == "FC":
         self.decoder = ReconstructionModule(imsize=imsize, num_capsules=num_classes,
                                             img_channel=img_channels, batchnorm=batchnorm)
+    elif reconstruction_type == "small_norb_conv":
+        self.decoder = SmallNorbConvReconstructionModule(num_capsules=num_classes,imsize=imsize, 
+                                                img_channels=img_channels, batchnorm=batchnorm)            
     else:
         self.decoder = ConvReconstructionModule(num_capsules=num_classes,imsize=imsize, 
                                                 img_channels=img_channels, batchnorm=batchnorm)

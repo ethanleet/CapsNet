@@ -15,7 +15,13 @@ def squash(x, dim=-1):
 
 def weights_init_xavier(m):
     classname = m.__class__.__name__
-    if classname.find('Conv') != -1 and classname != "ConvReconstructionModule" and classname != "ConvLayer":
+    ignore_modules = [
+        "SmallNorbConvReconstructionModule",
+        "ConvReconstructionModule",
+        "ConvLayer"
+    ]
+    
+    if classname.find('Conv') != -1 and classname not in ignore_modules:
         nn.init.xavier_normal_(m.weight.data, gain=0.02)
     elif classname.find('Linear') != -1:
         nn.init.xavier_normal_(m.weight.data, gain=0.02)

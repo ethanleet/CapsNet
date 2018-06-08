@@ -46,6 +46,8 @@ def get_network(opts):
                           batchnorm=opts.batch_norm,
                           loss=opts.loss_type)
     if opts.dataset == "small_norb":
+        if opts.decoder == "conv":
+            opts.decoder = "small_norb_conv"
         capsnet = CapsNet(reconstruction_type=opts.decoder,
                           alpha = opts.alpha,
                           imsize=32,
