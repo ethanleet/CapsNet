@@ -37,14 +37,14 @@ def load_small_norb(batch_size):
     path = SMALL_NORB_PATH
     train_transform = transforms.Compose([
                           transforms.Resize(48),
-                          transforms.RandomCrop(28),
+                          transforms.RandomCrop(32),
                           transforms.ColorJitter(brightness=32./255, contrast=0.5),
                           transforms.ToTensor(),
                           transforms.Normalize((0.0,), (0.3081,))
                       ])
     test_transform = transforms.Compose([
                           transforms.Resize(48),
-                          transforms.CenterCrop(28),
+                          transforms.CenterCrop(32),
                           transforms.ToTensor(),
                           transforms.Normalize((0.,), (0.3081,))
                       ])

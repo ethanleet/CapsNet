@@ -50,6 +50,8 @@ def create_options():
                      help="GPU IDS to use if training on multiple GPU. Give ID with comma seperators.")
     parser.add_option("--batch_norm", dest="batch_norm", default=False, type=int,
                       help="Turn on/off batch norm in encoder/decoder")
+    parser.add_option("--loss", dest="loss_type", default="L2",
+                      help="Define reconstruction loss. Types: [L1, L2]")
     
     options, args = parser.parse_args()
     if options.gpu_ids:

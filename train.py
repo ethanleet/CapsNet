@@ -43,14 +43,17 @@ def get_network(opts):
         capsnet = CapsNet(reconstruction_type=opts.decoder,
                           alpha = opts.alpha,
                           routing_iterations = opts.routing_iterations,
-                          batchnorm=opts.batch_norm)
+                          batchnorm=opts.batch_norm,
+                          loss=opts.loss_type)
     if opts.dataset == "small_norb":
         capsnet = CapsNet(reconstruction_type=opts.decoder,
                           alpha = opts.alpha,
-                          imsize=28,
+                          imsize=32,
                           num_classes=5,
                           routing_iterations = opts.routing_iterations, 
-                          batchnorm=opts.batch_norm)
+                          primary_caps_gridsize=8,
+                          batchnorm=opts.batch_norm,
+                          loss = opts.loss_type)
     if opts.dataset == "cifar10":
         capsnet = CapsNet(reconstruction_type=opts.decoder,
                           alpha = opts.alpha,
@@ -58,7 +61,8 @@ def get_network(opts):
                           routing_iterations = opts.routing_iterations,
                           primary_caps_gridsize=8,
                           img_channels=3, 
-                          batchnorm=opts.batch_norm)
+                          batchnorm=opts.batch_norm,
+                          loss=opts.loss_type)
     if opts.use_gpu:
         capsnet.cuda()
     if opts.gpu_ids:
@@ -134,7 +138,7 @@ def main(opts):
             if opts.dataset == 'cifar10':
                 save_images_cifar10(IMAGES_SAVE_DIR, filename, data, reconstructions)
             else:
-                save_images(IMAGES_SAVE_DIR, filename, data, reconstructions)
+                save_images(IMAGES_SAVE_DIR, filename, data, reconstructions, imsize=capsnet.imsize)
 
         # Save model
         model_path = get_path(SAVE_DIR, "model{}.pt".format(epoch))
