@@ -15,7 +15,13 @@ def squash(x, dim=-1):
 
 def weights_init_xavier(m):
     classname = m.__class__.__name__
-    if classname.find('Conv') != -1 and classname != "ConvReconstructionModule" and classname != "ConvLayer":
+    ignore_modules = [
+        "SmallNorbConvReconstructionModule",
+        "ConvReconstructionModule",
+        "ConvLayer"
+    ]
+    
+    if classname.find('Conv') != -1 and classname not in ignore_modules:
         nn.init.xavier_normal_(m.weight.data, gain=0.02)
     elif classname.find('Linear') != -1:
         nn.init.xavier_normal_(m.weight.data, gain=0.02)
@@ -42,14 +48,14 @@ def get_path(SAVE_DIR, filename):
     path = os.path.join(SAVE_DIR, filename)
     return path
     
-def save_images(SAVE_DIR, filename, images, reconstructions, num_images = 100):
+def save_images(SAVE_DIR, filename, images, reconstructions, num_images = 100, imsize=28):
     if len(images) < num_images or len(reconstructions) < num_images:
         print("Not enough images to save.")
         return
 
-    big_image = np.ones((28*10, 28*20+1))
-    images = denormalize(images).view(-1, 28, 28)
-    reconstructions = denormalize(reconstructions).view(-1, 28, 28)
+    big_image = np.ones((imsize*10, imsize*20+1))
+    images = denormalize(images).view(-1, imsize, imsize)
+    reconstructions = denormalize(reconstructions).view(-1, imsize, imsize)
     images = images.data.cpu().numpy()
     reconstructions = reconstructions.data.cpu().numpy()
     for i in range(num_images):
@@ -57,9 +63,9 @@ def save_images(SAVE_DIR, filename, images, reconstructions, num_images = 100):
         rec = reconstructions[i]
         j = i % 10
         i = i // 10
-        big_image[i*28:(i+1)*28, j*28:(j+1)*28] = image
+        big_image[i*imsize:(i+1)*imsize, j*imsize:(j+1)*imsize] = image
         j += 10
-        big_image[i*28:(i+1)*28, j*28+1:(j+1)*28+1] = rec
+        big_image[i*imsize:(i+1)*imsize, j*imsize+1:(j+1)*imsize+1] = rec
 
     path = get_path(SAVE_DIR, filename)
     plt.imsave(path, big_image, cmap="gray")
