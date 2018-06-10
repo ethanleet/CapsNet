@@ -105,17 +105,24 @@ def main(opts):
 
     for epoch in range(opts.epochs):
         capsnet.train()
+        
+        # Annealing alpha
+        t = epoch
+        alpha = opts.alpha
+#         alpha = opts.alpha * float(np.tanh(t/4 - np.pi) + 1) / 2
+#         alpha = opts.alpha * float(np.tanh(t/4))
+        
         for batch, (data, target) in tqdm(list(enumerate(train_loader)), ascii=True, desc="Epoch{:3d}".format(epoch)):
             optimizer.zero_grad()
             data, target = transform_data(data, target, opts.use_gpu, num_classes=capsnet.num_classes)
 
             capsule_output, reconstructions, _ = capsnet(data, target)
             data = denormalize(data)
-            loss, rec_loss = capsnet.loss(data, target, capsule_output, reconstructions)
+            loss, rec_loss, marg_loss = capsnet.loss(data, target, capsule_output, reconstructions, alpha)
             loss.backward()
             optimizer.step()
             
-            stats.track_train(loss.data.item(), rec_loss.data.item())
+            stats.track_train(loss.data.item(), rec_loss.data.item(), marg_loss.data.item())
         
         """Evaluate on test set"""
         capsnet.eval()
@@ -124,10 +131,10 @@ def main(opts):
 
             capsule_output, reconstructions, predictions = capsnet(data)
             data = denormalize(data)
-            loss, rec_loss = capsnet.loss(data, target, capsule_output, reconstructions)
+            loss, rec_loss, marg_loss = capsnet.loss(data, target, capsule_output, reconstructions, alpha)
 
 
-            stats.track_test(loss.data.item(),rec_loss.data.item(), target, predictions)
+            stats.track_test(loss.data.item(),rec_loss.data.item(), marg_loss.data.item(), target, predictions)
 
         stats.save_stats(epoch)
 

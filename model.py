@@ -354,11 +354,11 @@ class CapsNet(nn.Module):
     reconstruction, masked = self.decoder(output, target)
     return output, reconstruction, masked
   
-  def loss(self, images, labels, capsule_output,  reconstruction):
+  def loss(self, images, labels, capsule_output,  reconstruction, alpha):
     marg_loss = self.margin_loss(capsule_output, labels)
     rec_loss = self.reconstruction_loss(images, reconstruction)
-    total_loss = (marg_loss + self.alpha*rec_loss).mean()
-    return total_loss, rec_loss.mean()
+    total_loss = (marg_loss + alpha * rec_loss).mean()
+    return total_loss, rec_loss.mean(), marg_loss.mean()
   
   def margin_loss(self, x, labels):
     batch_size = x.size(0)
