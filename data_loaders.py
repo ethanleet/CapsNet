@@ -60,18 +60,25 @@ def load_small_norb(batch_size):
     return train_loader, test_loader
 
 def load_cifar10(batch_size):
-    dataset_transform = transforms.Compose([
+    
+    train_transform = transforms.Compose([
+                transforms.ColorJitter(brightness=63./255, contrast=0.8),
+                transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                transforms.Normalize((0,0,0), (0.5, 0.5, 0.5))
             ])
+    test_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0,0,0), (0.5, 0.5, 0.5))
+        ])
     train_dataset = datasets.CIFAR10('../data',
                                     train=True,
                                     download=True,
-                                    transform=dataset_transform)
+                                    transform=train_transform)
     test_dataset = datasets.CIFAR10('../data',
                                     train=False,
                                     download=True,
-                                    transform=dataset_transform)
+                                    transform=test_transform)
     
     train_loader = torch.utils.data.DataLoader(train_dataset,
                                               batch_size=batch_size,
