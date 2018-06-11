@@ -127,7 +127,8 @@ def main(opts):
             optimizer.zero_grad()
             data, target = transform_data(data, target, opts.use_gpu, num_classes=capsnet.num_classes)
 
-            capsule_output, reconstructions, predictions = capsnet(data, target)
+            capsule_output, reconstructions, _ = capsnet(data, target)
+            predictions = torch.norm(capsule_output.squeeze(), dim=2)
             data = denormalize(data)
             loss, rec_loss, marg_loss = capsnet.loss(data, target, capsule_output, reconstructions, alpha)
             loss.backward()
