@@ -15,6 +15,16 @@ from model import CapsNet
 from options import create_options
 from tqdm import tqdm
 
+def get_alpha(epoch):
+    # WARNING: Does not support alpha value saving when continuning training from a saved model
+    if opts.anneal_alpha == "none":
+        alpha = opts.alpha
+    if opts.anneal_alpha == "1":
+        alpha = opts.alpha * float(np.tanh(epoch/4 - np.pi) + 1) / 2
+    if opts.anneal_alpha == "2":
+        alpha = opts.alpha * float(np.tanh(epoch/8))
+    return alpha
+
 def onehot(tensor, num_classes=10):
     return torch.eye(num_classes).cuda().index_select(dim=0, index=tensor) # One-hot encode 
 
@@ -41,7 +51,6 @@ class GPUParallell(nn.DataParallel):
 def get_network(opts):
     if opts.dataset == "mnist":
         capsnet = CapsNet(reconstruction_type=opts.decoder,
-                          alpha = opts.alpha,
                           routing_iterations = opts.routing_iterations,
                           batchnorm=opts.batch_norm,
                           loss=opts.loss_type,
@@ -50,7 +59,6 @@ def get_network(opts):
         if opts.decoder == "conv":
             opts.decoder = "conv32"
         capsnet = CapsNet(reconstruction_type=opts.decoder,
-                          alpha = opts.alpha,
                           imsize=32,
                           num_classes=5,
                           routing_iterations = opts.routing_iterations, 
@@ -63,7 +71,6 @@ def get_network(opts):
         if opts.decoder == "conv":
             opts.decoder = "conv32"
         capsnet = CapsNet(reconstruction_type=opts.decoder,
-                          alpha = opts.alpha,
                           imsize=32, 
                           routing_iterations = opts.routing_iterations,
                           primary_caps_gridsize=8,
@@ -112,17 +119,21 @@ def main(opts):
 
     for epoch in range(opts.epochs):
         capsnet.train()
+        
+        # Annealing alpha
+        alpha = get_alpha(epoch)
+
         for batch, (data, target) in tqdm(list(enumerate(train_loader)), ascii=True, desc="Epoch{:3d}".format(epoch)):
             optimizer.zero_grad()
             data, target = transform_data(data, target, opts.use_gpu, num_classes=capsnet.num_classes)
 
             capsule_output, reconstructions, _ = capsnet(data, target)
             data = denormalize(data)
-            loss, rec_loss = capsnet.loss(data, target, capsule_output, reconstructions)
+            loss, rec_loss, marg_loss = capsnet.loss(data, target, capsule_output, reconstructions, alpha)
             loss.backward()
             optimizer.step()
             
-            stats.track_train(loss.data.item(), rec_loss.data.item())
+            stats.track_train(loss.data.item(), rec_loss.data.item(), marg_loss.data.item())
         
         """Evaluate on test set"""
         capsnet.eval()
@@ -131,10 +142,10 @@ def main(opts):
 
             capsule_output, reconstructions, predictions = capsnet(data)
             data = denormalize(data)
-            loss, rec_loss = capsnet.loss(data, target, capsule_output, reconstructions)
+            loss, rec_loss, marg_loss = capsnet.loss(data, target, capsule_output, reconstructions, alpha)
 
 
-            stats.track_test(loss.data.item(),rec_loss.data.item(), target, predictions)
+            stats.track_test(loss.data.item(),rec_loss.data.item(), marg_loss.data.item(), target, predictions)
 
         stats.save_stats(epoch)
 
