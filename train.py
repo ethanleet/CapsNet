@@ -43,25 +43,32 @@ def get_network(opts):
         capsnet = CapsNet(reconstruction_type=opts.decoder,
                           routing_iterations = opts.routing_iterations,
                           batchnorm=opts.batch_norm,
-                          loss=opts.loss_type)
+                          loss=opts.loss_type,
+                          leaky_routing=opts.leaky_routing)
     if opts.dataset == "small_norb":
         if opts.decoder == "conv":
-            opts.decoder = "small_norb_conv"
+            opts.decoder = "conv32"
         capsnet = CapsNet(reconstruction_type=opts.decoder,
                           imsize=32,
                           num_classes=5,
                           routing_iterations = opts.routing_iterations, 
                           primary_caps_gridsize=8,
+                          num_primary_capsules=32,
                           batchnorm=opts.batch_norm,
-                          loss = opts.loss_type)
+                          loss = opts.loss_type,
+                          leaky_routing=opts.leaky_routing)
     if opts.dataset == "cifar10":
+        if opts.decoder == "conv":
+            opts.decoder = "conv32"
         capsnet = CapsNet(reconstruction_type=opts.decoder,
                           imsize=32, 
                           routing_iterations = opts.routing_iterations,
                           primary_caps_gridsize=8,
                           img_channels=3, 
                           batchnorm=opts.batch_norm,
-                          loss=opts.loss_type)
+                          num_primary_capsules=32,
+                          loss=opts.loss_type,
+                          leaky_routing=opts.leaky_routing)
     if opts.use_gpu:
         capsnet.cuda()
     if opts.gpu_ids:

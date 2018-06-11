@@ -54,6 +54,8 @@ def create_options():
                       help="Define reconstruction loss. Types: [L1, L2]")
     parser.add_option("--analpha", dest="anneal_alpha", default="none",
                       help="Set annealing function for alpha. Options: [none, 1, 2]")
+    parser.add_option("--leaky", dest="leaky_routing", default=False, action="store_true", 
+                      help="Turn on/off leaky routing (Add orphan class for reconstruction)")
     
     options, args = parser.parse_args()
     if options.gpu_ids:
