@@ -15,6 +15,16 @@ from model import CapsNet
 from options import create_options
 from tqdm import tqdm
 
+def get_alpha(epoch):
+    # WARNING: Does not support alpha value saving when continuning training from a saved model
+    if opts.anneal_alpha == "none":
+        alpha = opts.alpha
+    if opts.anneal_alpha == "1":
+        alpha = opts.alpha * float(np.tanh(epoch/4 - np.pi) + 1) / 2
+    if opts.anneal_alpha == "2":
+        alpha = opts.alpha * float(np.tanh(epoch/8))
+    return alpha
+
 def onehot(tensor, num_classes=10):
     return torch.eye(num_classes).cuda().index_select(dim=0, index=tensor) # One-hot encode 
 
@@ -104,14 +114,8 @@ def main(opts):
         capsnet.train()
         
         # Annealing alpha
-        # WARNING: Does not support alpha value saving when continuning training from a saved model
-        if opts.anneal_alpha == "none":
-            alpha = opts.alpha
-        if opts.anneal_alpha == "1":
-            alpha = opts.alpha * float(np.tanh(epoch/4 - np.pi) + 1) / 2
-        if opts.anneal_alpha == "2":
-            alpha = opts.alpha * float(np.tanh(epoch/8))
-        
+        alpha = get_alpha(epoch)
+
         for batch, (data, target) in tqdm(list(enumerate(train_loader)), ascii=True, desc="Epoch{:3d}".format(epoch)):
             optimizer.zero_grad()
             data, target = transform_data(data, target, opts.use_gpu, num_classes=capsnet.num_classes)
