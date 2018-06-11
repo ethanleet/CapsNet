@@ -52,6 +52,8 @@ def create_options():
                       help="Turn on/off batch norm in encoder/decoder")
     parser.add_option("--loss", dest="loss_type", default="L2",
                       help="Define reconstruction loss. Types: [L1, L2]")
+    parser.add_option("--analpha", dest="anneal_alpha", default="none",
+                      help="Set annealing function for alpha. Options: [none, 1, 2]")
     
     options, args = parser.parse_args()
     if options.gpu_ids:

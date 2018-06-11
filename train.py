@@ -41,7 +41,6 @@ class GPUParallell(nn.DataParallel):
 def get_network(opts):
     if opts.dataset == "mnist":
         capsnet = CapsNet(reconstruction_type=opts.decoder,
-                          alpha = opts.alpha,
                           routing_iterations = opts.routing_iterations,
                           batchnorm=opts.batch_norm,
                           loss=opts.loss_type)
@@ -49,7 +48,6 @@ def get_network(opts):
         if opts.decoder == "conv":
             opts.decoder = "small_norb_conv"
         capsnet = CapsNet(reconstruction_type=opts.decoder,
-                          alpha = opts.alpha,
                           imsize=32,
                           num_classes=5,
                           routing_iterations = opts.routing_iterations, 
@@ -58,7 +56,6 @@ def get_network(opts):
                           loss = opts.loss_type)
     if opts.dataset == "cifar10":
         capsnet = CapsNet(reconstruction_type=opts.decoder,
-                          alpha = opts.alpha,
                           imsize=32, 
                           routing_iterations = opts.routing_iterations,
                           primary_caps_gridsize=8,
@@ -107,10 +104,13 @@ def main(opts):
         capsnet.train()
         
         # Annealing alpha
-        t = epoch
-        alpha = opts.alpha
-#         alpha = opts.alpha * float(np.tanh(t/4 - np.pi) + 1) / 2
-#         alpha = opts.alpha * float(np.tanh(t/4))
+        # WARNING: Does not support alpha value saving when continuning training from a saved model
+        if opts.anneal_alpha == "none":
+            alpha = opts.alpha
+        if opts.anneal_alpha == "1":
+            alpha = opts.alpha * float(np.tanh(epoch/4 - np.pi) + 1) / 2
+        if opts.anneal_alpha == "2":
+            alpha = opts.alpha * float(np.tanh(epoch/8))
         
         for batch, (data, target) in tqdm(list(enumerate(train_loader)), ascii=True, desc="Epoch{:3d}".format(epoch)):
             optimizer.zero_grad()

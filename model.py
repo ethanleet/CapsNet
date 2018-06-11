@@ -313,7 +313,6 @@ class SmallNorbConvReconstructionModule(nn.Module):
 class CapsNet(nn.Module):
   
   def __init__(self,
-               alpha=0.0005, # Alpha from the loss function
                reconstruction_type = "FC",
                imsize=28,
                num_classes=10,
@@ -345,7 +344,6 @@ class CapsNet(nn.Module):
         self.reconstruction_criterion = nn.MSELoss(reduce=False)
     if loss == "L1":
         self.reconstruction_criterion = nn.L1Loss(reduce=False)
-    self.alpha = alpha
   
   def forward(self, x, target=None):
     output = self.conv_layer(x)
