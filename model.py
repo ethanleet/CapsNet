@@ -85,25 +85,25 @@ class PrimaryCapules(nn.Module):
         self.capsules = nn.ModuleList([
           nn.Sequential(
           nn.Conv2d(in_channels=in_channels,
-                    out_channels=out_channels,
+                    out_channels=num_capsules,
                     kernel_size=kernel_size,
                     stride=2,
                     padding=0),
-          nn.BatchNorm2d(out_channels)
+          nn.BatchNorm2d(num_capsules)
           )
-           for i in range(num_capsules)
+           for i in range(out_channels)
         ])
     else:
         self.capsules = nn.ModuleList([
           nn.Sequential(
           nn.Conv2d(in_channels=in_channels,
-                    out_channels=out_channels,
+                    out_channels=num_capsules,
                     kernel_size=kernel_size,
                     stride=2,
                     padding=0),
 
           )
-           for i in range(num_capsules)
+           for i in range(out_channels)
         ])
   
   def forward(self, x):
