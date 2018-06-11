@@ -52,6 +52,8 @@ def create_options():
                       help="Turn on/off batch norm in encoder/decoder")
     parser.add_option("--loss", dest="loss_type", default="L2",
                       help="Define reconstruction loss. Types: [L1, L2]")
+    parser.add_option("--leaky", dest="leaky_routing", default=False, action="store_true", 
+                      help="Turn on/off leaky routing (Add orphan class for reconstruction)")
     
     options, args = parser.parse_args()
     if options.gpu_ids:
