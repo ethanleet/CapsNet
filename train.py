@@ -127,13 +127,13 @@ def main(opts):
             optimizer.zero_grad()
             data, target = transform_data(data, target, opts.use_gpu, num_classes=capsnet.num_classes)
 
-            capsule_output, reconstructions, _ = capsnet(data, target)
+            capsule_output, reconstructions, predictions = capsnet(data, target)
             data = denormalize(data)
             loss, rec_loss, marg_loss = capsnet.loss(data, target, capsule_output, reconstructions, alpha)
             loss.backward()
             optimizer.step()
             
-            stats.track_train(loss.data.item(), rec_loss.data.item(), marg_loss.data.item())
+            stats.track_train(loss.data.item(), rec_loss.data.item(), marg_loss.data.item(), target, predictions)
         
         """Evaluate on test set"""
         capsnet.eval()
