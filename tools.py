@@ -2,6 +2,11 @@ import torch
 import torch.nn as nn
 import numpy as np
 import os
+
+import matplotlib
+if os.environ.get('DISPLAY','') == '':
+    print('no display found. Using non-interactive Agg backend')
+    matplotlib.use('Agg')
 import matplotlib.pyplot as plt 
 # The squash function specified in Dynamic Routing Between Capsules
 # x: input tensor 

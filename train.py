@@ -5,8 +5,6 @@ import torch.nn as nn
 import numpy as np
 from torch.autograd import Variable
 
-import matplotlib.pyplot as plt
-
 from constants import *
 from data_loaders import *
 from stats import *
