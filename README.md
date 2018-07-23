@@ -95,10 +95,11 @@ $ python train.py -h
 
 **Step 4. Get your results**
 
-Trained models are saved in ```saved_models``` directory. Plots of training losses are saved in ```plots```, reconstruction results are saved in ```reconstructions```. You can also use the Jupyter Notebooks in ```notebooks``` for some futher experiments.
+Trained models are saved in ```saved_models``` directory. Reconstruction results are saved in ```reconstructions```. You can also use the Jupyter Notebooks in ```notebooks``` for some futher experiments.
 
 ## Future work
 
+* Fully develop notebooks for visualization and plotting.
 * Implement [EM routing](https://openreview.net/pdf?id=HJWLfGWRb).
 
 
