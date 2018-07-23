@@ -54,8 +54,8 @@ def get_network(opts):
                           loss=opts.loss_type,
                           leaky_routing=opts.leaky_routing)
     if opts.dataset == "small_norb":
-        if opts.decoder == "conv":
-            opts.decoder = "conv32"
+        if opts.decoder == "Conv":
+            opts.decoder = "Conv32"
         capsnet = CapsNet(reconstruction_type=opts.decoder,
                           imsize=32,
                           num_classes=5,
@@ -66,8 +66,8 @@ def get_network(opts):
                           loss = opts.loss_type,
                           leaky_routing=opts.leaky_routing)
     if opts.dataset == "cifar10":
-        if opts.decoder == "conv":
-            opts.decoder = "conv32"
+        if opts.decoder == "Conv":
+            opts.decoder = "Conv32"
         capsnet = CapsNet(reconstruction_type=opts.decoder,
                           imsize=32, 
                           routing_iterations = opts.routing_iterations,

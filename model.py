@@ -351,7 +351,7 @@ class CapsNet(nn.Module):
                                             num_capsules=num_classes,
                                             img_channel=img_channels, 
                                             batchnorm=batchnorm)
-    elif reconstruction_type == "conv32":
+    elif reconstruction_type == "Conv32":
         self.decoder = SmallNorbConvReconstructionModule(num_capsules=num_classes,
                                                          imsize=imsize, 
                                                          img_channels=img_channels, 
