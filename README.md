@@ -25,8 +25,8 @@ Here is an comparison between the two reconstruction modules after training for 
 |Model        |  RLoss  |  MLoss  |  Accuracy  |
 |:------------|:-------:|:-------:|:----------:|
 |FC           | 21.62   | 0.0058  | 99.51%     |
-|DeConv       | 10.87   | 0.0050  | 99.54%     |
 |FC w/ BN     | 13.12   | 0.0054  | 99.54%     |
+|DeConv       | 10.87   | 0.0050  | 99.54%     |
 |DeConv w/ BN | 9.52    | 0.0044  | 99.55%     | 
 
 ## Visualization
@@ -56,6 +56,7 @@ We used a pre-trained network to train a reconstruction module for Primary Capsu
 
 * Python 3
 * PyTorch
+* Torchvision 0.2.1
 * TQDM
 
 **Step 2. Adjust hyperparameters**
@@ -67,7 +68,7 @@ DEFAULT_ALPHA = 0.0005 # Scaling factor for reconstruction loss
 DEFAULT_DATASET = "small_norb" # 'mnist', 'small_norb'
 DEFAULT_DECODER = "FC" # 'FC' or 'Conv'
 DEFAULT_BATCH_SIZE = 128
-DEFAULT_EPOCHS = 300 # DEFAULT_EPOCHS = 300
+DEFAULT_EPOCHS = 300
 DEFAULT_USE_GPU = True
 DEFAULT_ROUTING_ITERATIONS = 3
 ```
@@ -83,7 +84,7 @@ $ python train.py
 Training flags example:
 
 ```console
-$ python train.py --decoder Conv  --file model32.pt --dataset mnist
+$ python train.py --decoder=Conv  --file=model32.pt --dataset=mnist
 ```
 
 Further help with training flags:
@@ -94,10 +95,11 @@ $ python train.py -h
 
 **Step 4. Get your results**
 
-Trained models are saved in ```saved_models``` directory. Plots of training losses are saved in ```plots```, reconstruction results are saved in ```reconstructions```. You can also use the Jupyter Notebooks in ```notebooks``` for some futher experiments.
+Trained models are saved in ```saved_models``` directory. Reconstruction results are saved in ```reconstructions```. You can also use the Jupyter Notebooks in ```notebooks``` for some futher experiments.
 
 ## Future work
 
+* Fully develop notebooks for visualization and plotting.
 * Implement [EM routing](https://openreview.net/pdf?id=HJWLfGWRb).
 
 
