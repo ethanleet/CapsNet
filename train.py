@@ -18,9 +18,9 @@ def get_alpha(epoch):
     if opts.anneal_alpha == "none":
         alpha = opts.alpha
     if opts.anneal_alpha == "1":
-        alpha = opts.alpha * float(np.tanh(epoch/4 - np.pi) + 1) / 2
+        alpha = opts.alpha * float(np.tanh(epoch/DEFAULT_ANNEAL_TEMPERATURE - np.pi) + 1) / 2
     if opts.anneal_alpha == "2":
-        alpha = opts.alpha * float(np.tanh(epoch/8))
+        alpha = opts.alpha * float(np.tanh(epoch/(2 * DEFAULT_ANNEAL_TEMPERATURE)))
     return alpha
 
 def onehot(tensor, num_classes=10):
