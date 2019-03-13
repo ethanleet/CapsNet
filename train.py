@@ -113,8 +113,8 @@ def main(opts):
     load_model(opts, capsnet)
 
     train_loader, test_loader = get_dataset(opts)
-    stats = Statistics(LOG_DIR, opts.log_filepath)
-
+    stats = Statistics(LOG_DIR, opts.model)
+    
     for epoch in range(opts.epochs):
         capsnet.train()
         
@@ -132,7 +132,7 @@ def main(opts):
             loss.backward()
             optimizer.step()
             
-            stats.track_train(loss.data.item(), rec_loss.data.item(), marg_loss.data.item(), target, predictions)
+            stats.track_train(loss.data.detach().item(), rec_loss.detach().item(), marg_loss.detach().item(), target.detach(), predictions.detach())
         
         """Evaluate on test set"""
         capsnet.eval()
@@ -144,7 +144,7 @@ def main(opts):
             loss, rec_loss, marg_loss = capsnet.loss(data, target, capsule_output, reconstructions, alpha)
 
 
-            stats.track_test(loss.data.item(),rec_loss.data.item(), marg_loss.data.item(), target, predictions)
+            stats.track_test(loss.data.detach().item(),rec_loss.detach().item(), marg_loss.detach().item(), target.detach(), predictions.detach())
 
         stats.save_stats(epoch)
 
