@@ -1,10 +1,39 @@
-from torchvision import datasets, transforms
+import numpy as np
 import torch
+from torchvision import datasets, transforms
+from torch.utils.data.sampler import SubsetRandomSampler
 from constants import * 
 from smallNorb import SmallNORB
-def load_mnist(batch_size):
+
+def build_dataloaders(batch_size, valid_size, train_dataset, valid_dataset, test_dataset):
+  # Compute validation split
+  train_size = len(train_dataset)
+  indices = list(range(train_size))
+  split = int(np.floor(valid_size * train_size))
+  np.random.shuffle(indices)
+  train_idx, valid_idx = indices[split:], indices[:split]
+  train_sampler = SubsetRandomSampler(train_idx)
+  valid_sampler = SubsetRandomSampler(valid_idx)
+  
+  # Create dataloaders
+  train_loader = torch.utils.data.DataLoader(train_dataset,
+                                             batch_size=batch_size,
+                                             sampler=train_sampler)
+  valid_loader = torch.utils.data.DataLoader(valid_dataset,
+                                             batch_size=batch_size,
+                                             sampler=valid_sampler)
+  test_loader = torch.utils.data.DataLoader(test_dataset,
+                                            batch_size=batch_size,
+                                            shuffle=False)
+  return train_loader, valid_loader, test_loader
+
+def load_mnist(batch_size, valid_size=0.1):
   train_transform = transforms.Compose([
                transforms.RandomAffine(0, translate=[0.08,0.08]),      
+               transforms.ToTensor(),
+               transforms.Normalize((0.1307,), (0.3081,))
+           ])
+  valid_transform = transforms.Compose([
                transforms.ToTensor(),
                transforms.Normalize((0.1307,), (0.3081,))
            ])
@@ -17,19 +46,16 @@ def load_mnist(batch_size):
                                train=True, 
                                download=True, 
                                transform=train_transform)
+  valid_dataset = datasets.MNIST('../data',
+                               train=True,
+                               download=True,
+                               transform=valid_transform)
   test_dataset = datasets.MNIST('../data', 
                                  train=False, 
                                  download=True, 
                                  transform=test_transform)
 
-
-  train_loader = torch.utils.data.DataLoader(train_dataset, 
-                                             batch_size=batch_size,
-                                             shuffle=True)
-  test_loader = torch.utils.data.DataLoader(test_dataset, 
-                                             batch_size=batch_size,
-                                             shuffle=False)
-  return train_loader, test_loader
+  return build_dataloaders(batch_size, valid_size, train_dataset, valid_dataset, test_dataset)
 
 
 
