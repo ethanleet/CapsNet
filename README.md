@@ -93,9 +93,15 @@ Further help with training flags:
 $ python train.py -h
 ```
 
+
 **Step 4. Get your results**
 
-Trained models are saved in ```saved_models``` directory. Reconstruction results are saved in ```reconstructions```. You can also use the Jupyter Notebooks in ```notebooks``` for some futher experiments.
+Trained models are saved in ```saved_models``` directory. Tensorboard logs are saved to logs/. You can launch tensorboard with
+
+```bash
+tensorboard --logdir logs
+```
+
 
 ## Future work
 
