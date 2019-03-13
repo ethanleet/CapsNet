@@ -68,6 +68,12 @@ def load_small_norb(batch_size):
                           transforms.ToTensor(),
                           transforms.Normalize((0.0,), (0.3081,))
                       ])
+    valid_transform = transforms.Compose([
+                          transforms.Resize(48),
+                          transforms.CenterCrop(32),
+                          transforms.ToTensor(),
+                          transforms.Normalize((0.,), (0.3081,))
+                      ])
     test_transform = transforms.Compose([
                           transforms.Resize(48),
                           transforms.CenterCrop(32),
@@ -76,20 +82,19 @@ def load_small_norb(batch_size):
                       ])
     
     train_dataset = SmallNORB(path, train=True, download=True, transform=train_transform)
+    valid_dataset = SmallNORB(path, train=True, download=True, transform=valid_transform)
     test_dataset = SmallNORB(path, train=False, transform=test_transform)
     
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size,
-                                               shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size,
-                                               shuffle=False)
-    
-    return train_loader, test_loader
+    return build_dataloaders(batch_size, valid_size, train_dataset, valid_dataset, test_dataset)
 
-def load_cifar10(batch_size):
-    
+def load_cifar10(batch_size, valid_size=0.1):
     train_transform = transforms.Compose([
                 transforms.ColorJitter(brightness=63./255, contrast=0.8),
                 transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize((0,0,0), (0.5, 0.5, 0.5))
+            ])
+    valid_transform = transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize((0,0,0), (0.5, 0.5, 0.5))
             ])
@@ -101,15 +106,13 @@ def load_cifar10(batch_size):
                                     train=True,
                                     download=True,
                                     transform=train_transform)
+    valid_dataset = datasets.CIFAR10('../data',
+                                    train=True,
+                                    download=True,
+                                    transform=valid_transform)
     test_dataset = datasets.CIFAR10('../data',
                                     train=False,
                                     download=True,
                                     transform=test_transform)
     
-    train_loader = torch.utils.data.DataLoader(train_dataset,
-                                              batch_size=batch_size,
-                                              shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset,
-                                              batch_size=batch_size,
-                                              shuffle=False)
-    return train_loader,test_loader
+    return build_dataloaders(batch_size, valid_size, train_dataset, valid_dataset, test_dataset)

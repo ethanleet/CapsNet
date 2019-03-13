@@ -13,6 +13,7 @@ from model import CapsNet
 from options import create_options
 from tqdm import tqdm
 
+print(torch.__version__)
 def get_alpha(epoch):
     # WARNING: Does not support alpha value saving when continuning training from a saved model
     if opts.anneal_alpha == "none":
@@ -112,7 +113,7 @@ def main(opts):
     """ Load saved model"""
     load_model(opts, capsnet)
 
-    train_loader, test_loader = get_dataset(opts)
+    train_loader, valid_loader, test_loader = get_dataset(opts)
     stats = Statistics(LOG_DIR, opts.model)
     
     for epoch in range(opts.epochs):
