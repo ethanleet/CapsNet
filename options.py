@@ -56,8 +56,12 @@ def create_options():
                       help="Set annealing function for alpha. Options: [none, 1, 2]")
     parser.add_option("--leaky", dest="leaky_routing", default=False, action="store_true", 
                       help="Turn on/off leaky routing (Add orphan class for reconstruction)")
+    parser.add_option("--model", dest="model", help="Set model name")
+    
+
     
     options, args = parser.parse_args()
+    assert options.model is not None, "You have to set a model name with the argument --model"
     if options.gpu_ids:
         options.gpu_ids = [int(x) for x in options.gpu_ids.split(',')]
     print_options(options)

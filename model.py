@@ -233,7 +233,7 @@ class ConvReconstructionModule(nn.Module):
     else:
       max_length_indices = target.max(dim=1)[1]
     
-    masked = Variable(x.new_tensor(torch.eye(self.num_capsules)))
+    masked = x.new_tensor(torch.eye(self.num_capsules))
     masked = masked.index_select(dim=0, index=max_length_indices.data)
 
     decoder_input = (x * masked[:, :, None, None]).view(batch_size, -1)
@@ -363,9 +363,9 @@ class CapsNet(nn.Module):
                                                 batchnorm=batchnorm)
     
     if loss == "L2":
-        self.reconstruction_criterion = nn.MSELoss(reduce=False)
+        self.reconstruction_criterion = nn.MSELoss(reduction="none")
     if loss == "L1":
-        self.reconstruction_criterion = nn.L1Loss(reduce=False)
+        self.reconstruction_criterion = nn.L1Loss(reduction="none")
   
   def forward(self, x, target=None):
     output = self.conv_layer(x)
