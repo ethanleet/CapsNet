@@ -55,7 +55,7 @@ We used a pre-trained network to train a reconstruction module for Primary Capsu
 **Step 1. Install requirements**
 
 * Python 3
-* PyTorch
+* PyTorch 1.0.1
 * Torchvision 0.2.1
 * TQDM
 
