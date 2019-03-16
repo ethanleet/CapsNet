@@ -20,6 +20,24 @@ class Statistics:
     self.logger_train = tensorboardX.SummaryWriter("logs/{}/train".format(model_name))
     self.logger_val = tensorboardX.SummaryWriter("logs/{}/val".format(model_name))
     self.global_step = 0
+    self.initialize_logfile(LOG_DIR, model_name)
+
+  def initialize_logfile(self, LOG_DIR, model_name):
+    # If the logfile already exists we continue to append to this.
+    LOG_DIR = LOG_DIR + "_old"
+    self.log_file = os.path.join(LOG_DIR, model_name)
+    if os.path.isfile(self.log_file): 
+        print("Logfile found and loaded.")
+        return
+    logname = "log-{}.txt".format(model_name)
+    self.log_file = os.path.join(LOG_DIR, logname)
+    if not os.path.isdir(LOG_DIR):
+        os.makedirs(LOG_DIR)
+
+    f = open(self.log_file, 'w')
+
+    f.write("epoch, time, test_loss, train_loss, test_accuracy, train_acc, reconstruction_loss_train, reconstruction_loss_test, margin_loss_train, margin_loss_test\n")
+    f.close()
 
   def reset_tracking_stats(self):
     self.train_loss = 0
@@ -42,6 +60,8 @@ class Statistics:
     self.train_loss += train_loss
     self.rec_loss += rec_loss
     self.marg_loss += marg_loss
+    self.train_correct += (target.max(dim=1)[1] == prediction.max(dim=1)[1]).sum().item()
+    self.train_num_samples += target.size(0)    
     train_acc = (target.max(dim=1)[1] == prediction.max(dim=1)[1]).float().mean().item()
     self.logger_train.add_scalar("accuracy", train_acc, global_step=self.global_step)
     self.logger_train.add_scalar("loss", train_loss, global_step=self.global_step)
@@ -63,6 +83,11 @@ class Statistics:
   def save_stats(self, epoch):
       
     time_spent = time.time() - self.time
+    train_loss = self.train_loss / self.train_steps
+    rec_loss = self.rec_loss / self.train_steps
+    marg_loss = self.marg_loss / self.train_steps
+    train_acc = self.train_correct / self.train_num_samples
+
     test_loss = self.test_loss / self.test_steps
     test_acc = self.test_correct / self.test_num_samples
     test_rec_loss = self.test_rec_loss / self.test_steps
@@ -73,5 +98,20 @@ class Statistics:
     self.logger_val.add_scalar("reconstruction_loss", test_rec_loss, global_step=self.global_step)
     self.logger_val.add_scalar("margin_loss", test_marg_loss, global_step=self.global_step)
     self.logger_val.add_scalar("time", time_spent, global_step=self.global_step)
+
+    self.TRAIN_ACC.append(train_acc)
+    self.TEST_ACC.append(test_acc)
+    self.TEST_LOSSES.append(test_loss)
+    self.TRAIN_LOSSES.append(train_loss)
+    self.RECONSTRUCTION_LOSS.append(rec_loss)
+    self.RECONSTRUCTION_LOSS_TEST.append(test_rec_loss)
+    self.MARGIN_LOSS.append(marg_loss)
+    self.MARGIN_LOSS_TEST.append(test_marg_loss)
+
+    f = open(self.log_file, 'a')
+    to_write = str([epoch, time_spent, test_loss, train_loss, test_acc*100, train_acc*100, rec_loss, test_rec_loss, marg_loss, test_marg_loss])[1:-1] + "\n"
+    f.write(to_write)
+    f.close()
+
     self.reset_tracking_stats()
     

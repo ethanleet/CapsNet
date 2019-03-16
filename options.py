@@ -11,10 +11,9 @@ def print_options(options):
     print("-"*80)        
 
 def log_options(options):
-    logname = "options.txt"
-    log_file = os.path.join(LOG_DIR, logname)
-    if not os.path.isdir(LOG_DIR):
-        os.makedirs(LOG_DIR)
+    logname = "{}.txt".format(options.model)
+    log_file = os.path.join(OPTIONS_DIR, logname)
+    os.makedirs(OPTIONS_DIR, exist_ok=True)
     
     f = open(log_file, 'w')
 

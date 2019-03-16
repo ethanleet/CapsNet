@@ -5,6 +5,8 @@ SAVE_DIR = "saved_models"
 PLOT_DIR = "plots"
 # Directory to save logs
 LOG_DIR = "logs"
+# Directory to save options
+OPTIONS_DIR = "options"
 # Directory to save images
 IMAGES_SAVE_DIR = "reconstructions"
 # Directory to save smallNorb Dataset

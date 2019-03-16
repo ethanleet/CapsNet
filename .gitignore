@@ -5,3 +5,7 @@ reconstructions
 __pycache__
 .ipynb_checkpoints
 datasets
+options/
+logs_old/
+.vscode
+data/
